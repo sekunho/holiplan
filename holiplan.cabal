@@ -7,8 +7,7 @@ synopsis:
 -- description:
 homepage:
 
--- A URL where users can report bugs.
--- bug-reports:
+-- A URL where users can report bugs. -- bug-reports:
 license:            AGPL-3.0-or-later
 license-file:       LICENSE
 author:             SEKUN
@@ -20,16 +19,24 @@ category:           Web
 extra-source-files: CHANGELOG.md
 
 library
-    exposed-modules:  MyLib
+    exposed-modules:
+        MyLib,
+        Routes
 
     -- Modules included in this library but not exported.
     -- other-modules:
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
-    build-depends:    base ^>=4.14.3.0
     hs-source-dirs:   src
     default-language: Haskell2010
+    build-depends:
+        base           ^>=4.14.3.0,
+        text           ^>=2.0,
+        time           ^>=1.12,
+        servant        ^>=0.19,
+        servant-server ^>=0.19,
+        aeson          ^>=2.1,
 
 executable holiplan
     main-is:          Main.hs
@@ -40,8 +47,11 @@ executable holiplan
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
     build-depends:
+        holiplan,
         base ^>=4.14.3.0,
-        holiplan
+        wai  ^>=3.2,
+        warp ^>=3.3
+
 
     hs-source-dirs:   app
     default-language: Haskell2010
