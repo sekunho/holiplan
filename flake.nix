@@ -13,10 +13,14 @@
     in {
       devShells.${system}.default = pkgs.mkShell rec {
         buildInputs = with pkgs; [
+          haskell.compiler.ghc8107
           haskell.packages.ghc8107.cabal-install
+
+          # Dev tools
           haskell.packages.ghc8107.haskell-language-server
           haskell.packages.ghc8107.fourmolu
-          haskell.compiler.ghc8107
+          haskell.packages.ghc8107.implicit-hie
+          hlint
 
           zlib
         ];

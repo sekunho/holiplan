@@ -1,0 +1,10 @@
+cradle:
+  cabal:
+    - path: "src"
+      component: "lib:holiplan"
+
+    - path: "app/Main.hs"
+      component: "holiplan:exe:holiplan"
+
+    - path: "test"
+      component: "holiplan:test:holiplan-test"

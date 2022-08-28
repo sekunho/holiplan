@@ -18,10 +18,21 @@ maintainer:         sekun@hey.com
 category:           Web
 extra-source-files: CHANGELOG.md
 
+common shared
+    default-language: Haskell2010
+    default-extensions:
+        NoStarIsType
+        DerivingStrategies
+        DerivingVia
+        ExplicitForAll
+        StrictData
+        TypeApplications
+
 library
+    import: shared
     exposed-modules:
-        MyLib,
-        Routes
+        HoliplanWeb.Routes,
+        HoliplanWeb.Server
 
     -- Modules included in this library but not exported.
     -- other-modules:
@@ -39,6 +50,7 @@ library
         aeson          ^>=2.1,
 
 executable holiplan
+    import: shared
     main-is:          Main.hs
 
     -- Modules included in this executable, other than Main.
@@ -51,7 +63,6 @@ executable holiplan
         base ^>=4.14.3.0,
         wai  ^>=3.2,
         warp ^>=3.3
-
 
     hs-source-dirs:   app
     default-language: Haskell2010

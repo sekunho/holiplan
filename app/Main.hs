@@ -1,6 +1,6 @@
 module Main where
 
-import Routes (app)
+import HoliplanWeb.Server (app)
 import Network.Wai.Handler.Warp (run)
 
 main :: IO ()
