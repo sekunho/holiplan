@@ -5,3 +5,7 @@
     lhs: return
     note: "Use `pure`"
     rhs: pure
+- hint:
+    lhs: mappend a a
+    note: "Use `(<>)`"
+    rhs: a <> a
