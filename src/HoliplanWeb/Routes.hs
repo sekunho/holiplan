@@ -32,6 +32,8 @@ import Servant (
   type (:<|>) ((:<|>)),
  )
 
+import Control.Concurrent.STM (TVar)
+import qualified Control.Concurrent.STM as STM (atomically, writeTVar, readTVar, readTVarIO)
 import Control.Monad.IO.Class (liftIO)
 import Servant.API (
   Capture,
@@ -54,6 +56,7 @@ import Servant.Server (serve)
 
 type HoliplanAPI =
   "plans" :> Capture "plan_id" Int :> Get '[JSON] PlanDetails
+    :<|> "plans" :> Get '[JSON] [PlanDetails]
     :<|> "plans" :> ReqBody '[JSON] ReqPlan :> PostCreated '[JSON] Plan
 
 data PlanDetails = PlanDetails
@@ -107,10 +110,11 @@ plan =
     , plan_description = "It's Bob's birthday!"
     }
 
-server :: Server HoliplanAPI
-server =
+server :: TVar [PlanDetails] -> Server HoliplanAPI
+server tvar = do
   getPlan
-    :<|> createPlan
+    :<|> listPlans tvar
+    :<|> createPlan tvar
  where
   getPlan :: Int -> Handler PlanDetails
   getPlan _ = do
@@ -118,8 +122,16 @@ server =
 
     pure planDetails
 
-  createPlan :: ReqPlan -> Handler Plan
-  createPlan reqPlan = do
+  listPlans :: TVar [PlanDetails] -> Handler [PlanDetails]
+  listPlans tvar = do
+    liftIO $ STM.readTVarIO tvar
+
+  createPlan :: TVar [PlanDetails] -> ReqPlan -> Handler Plan
+  createPlan tvar reqPlan = do
+    liftIO . STM.atomically $ do
+      currentDetails <- STM.readTVar tvar
+      STM.writeTVar tvar (planDetails:currentDetails)
+
     liftIO $ print reqPlan
 
     pure plan

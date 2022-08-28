@@ -22,7 +22,9 @@
           haskell.packages.ghc8107.implicit-hie
           hlint
 
+          pkg-config
           zlib
+          postgresql
         ];
 
         LD_LIBRARY_PATH = lib.makeLibraryPath buildInputs;
