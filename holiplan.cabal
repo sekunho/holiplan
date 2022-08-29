@@ -39,22 +39,28 @@ library
     -- Modules included in this library but not exported.
     -- other-modules:
 
-    -- LANGUAGE extensions used by modules in this package.
-    -- other-extensions:
     hs-source-dirs:   src
     default-language: Haskell2010
+
+    -- Core dependencies
     build-depends:
         base              ^>=4.14.3.0,
         text              ^>=2.0,
         time              ^>=1.11,
+        stm               ^>=2.5,
+
+    -- Web service related stuff
+    build-depends:
         servant           ^>=0.19,
         servant-server    ^>=0.19,
         aeson             ^>=2.1,
+
+    -- PostgreSQL integration
+    build-depends:
         hasql             ^>=1.6,
         hasql-pool        ^>=0.7,
         hasql-th          ^>=0.4,
-        hasql-transaction ^>= 1.0,
-        stm               ^>=2.5,
+        hasql-transaction ^>=1.0,
 
 executable holiplan
     import: shared
