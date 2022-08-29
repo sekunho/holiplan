@@ -25,6 +25,7 @@ common shared
         DerivingStrategies
         DerivingVia
         ExplicitForAll
+        OverloadedStrings
         StrictData
         TypeApplications
 
@@ -32,7 +33,8 @@ library
     import: shared
     exposed-modules:
         HoliplanWeb.Routes,
-        HoliplanWeb.Server
+        HoliplanWeb.Server,
+        DB
 
     -- Modules included in this library but not exported.
     -- other-modules:
@@ -42,14 +44,17 @@ library
     hs-source-dirs:   src
     default-language: Haskell2010
     build-depends:
-        base           ^>=4.14.3.0,
-        text           ^>=2.0,
-        time           ^>=1.11,
-        servant        ^>=0.19,
-        servant-server ^>=0.19,
-        aeson          ^>=2.1,
-        hasql          ^>=1.6,
-        stm            ^>=2.5,
+        base              ^>=4.14.3.0,
+        text              ^>=2.0,
+        time              ^>=1.11,
+        servant           ^>=0.19,
+        servant-server    ^>=0.19,
+        aeson             ^>=2.1,
+        hasql             ^>=1.6,
+        hasql-pool        ^>=0.7,
+        hasql-th          ^>=0.4,
+        hasql-transaction ^>= 1.0,
+        stm               ^>=2.5,
 
 executable holiplan
     import: shared

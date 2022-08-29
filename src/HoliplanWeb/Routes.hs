@@ -2,11 +2,11 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE QuasiQuotes #-}
 
 module HoliplanWeb.Routes (holiplanAPI, server) where
 
@@ -29,7 +29,7 @@ import Servant (
   Handler,
   Proxy (Proxy),
   Server,
-  type (:<|>) ((:<|>)), ServerError (errBody), throwError, err404
+  type (:<|>) ((:<|>)), ServerError (errBody), throwError, err404, err500
  )
 
 import Control.Concurrent.STM (TVar)
@@ -54,6 +54,10 @@ import Servant.API (
   (:>),
  )
 import Servant.Server (serve)
+import Hasql.Pool (Pool)
+import qualified Hasql.Pool as Pool (use)
+import Hasql.TH (vectorStatement)
+import qualified Hasql.Session as Session
 
 type HoliplanAPI =
   "plans" :> Capture "plan_id" Int :> Get '[JSON] PlanDetail
@@ -89,14 +93,18 @@ $(deriveJSON defaultOptions{fieldLabelModifier = drop 13} ''PlanDetail)
 $(deriveJSON defaultOptions{fieldLabelModifier = drop 5} ''Plan)
 $(deriveJSON defaultOptions{fieldLabelModifier = drop 9} ''ReqPlan)
 
-server :: TVar [PlanDetail] -> Server HoliplanAPI
-server tvar = do
-  getPlan tvar
-    :<|> listPlans tvar
-    :<|> createPlan tvar
+foo =
+  [vectorStatement|
+    select content :: text from app.comments |]
+
+server :: TVar [PlanDetail] -> Pool -> Server HoliplanAPI
+server tvar dbPool = do
+  getPlan tvar dbPool
+    :<|> listPlans tvar dbPool
+    :<|> createPlan tvar dbPool
  where
-  getPlan :: TVar [PlanDetail] -> Int -> Handler PlanDetail
-  getPlan tvar planId = do
+  getPlan :: TVar [PlanDetail] -> Pool -> Int -> Handler PlanDetail
+  getPlan tvar dbPool planId = do
     planDetails <- liftIO $ STM.readTVarIO tvar
 
     let planDetail = Foldable.find ((== planId) . plan_detail_id) planDetails
@@ -105,12 +113,19 @@ server tvar = do
       Just p -> pure p
       Nothing -> throwError (err404 { errBody = "Plan doesn't exist" })
 
-  listPlans :: TVar [PlanDetail] -> Handler [PlanDetail]
-  listPlans tvar = do
+  listPlans :: TVar [PlanDetail] -> Pool -> Handler [PlanDetail]
+  listPlans tvar dbPool = do
+    let statement = Session.statement () foo
+    res <- liftIO $ Pool.use dbPool statement
+
+    case res of
+      Left _ -> throwError (err500 { errBody = "shit's fucked" })
+      Right t -> liftIO (print t)
+
     liftIO $ STM.readTVarIO tvar
 
-  createPlan :: TVar [PlanDetail] -> ReqPlan -> Handler PlanDetail
-  createPlan tvar reqPlan = do
+  createPlan :: TVar [PlanDetail] -> Pool -> ReqPlan -> Handler PlanDetail
+  createPlan tvar dbPool reqPlan = do
     liftIO . STM.atomically $ do
       currentDetails <- STM.readTVar tvar
 
