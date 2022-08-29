@@ -1,0 +1,14 @@
+%syntax-version=1.0.0
+%project=holiplan
+%uri=https://github.com/sekunho/holiplan
+
+extensions 2022-05-16T05:30:11Z sekun <sekun@ichi> # Add necessary PG extensions
+roles 2022-05-16T10:59:21Z sekun <sekun@ichi> # DB roles
+schema__app 2022-05-16T10:48:59Z sekun <sekun@ichi> # Add app schema
+schema__auth 2022-05-16T10:57:31Z sekun <sekun@ichi> # Add auth schema for authentication stuff
+schema__api 2022-05-16T10:57:45Z sekun <sekun@ichi> # Add schema for API-related stuff
+app__users 2022-05-16T10:47:26Z sekun <sekun@ichi> # Add users schema
+app__holiday_plans 2022-05-16T05:33:07Z sekun <sekun@ichi> # Add holiday plans
+auth__sessions 2022-05-16T11:48:43Z sekun <sekun@ichi> # Add the relevant stuff for authentication
+api__holiday_plans 2022-05-16T12:18:18Z sekun <sekun@ichi> # Add API stuff for holiday plans (and events)
+api__users 2022-05-17T04:15:13Z sekun <sekun@ichi> # Add API endpoints for users

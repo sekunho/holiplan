@@ -13,8 +13,12 @@
     in {
       devShells.${system}.default = pkgs.mkShell rec {
         buildInputs = with pkgs; [
+          # Haskal
           haskell.compiler.ghc8107
           haskell.packages.ghc8107.cabal-install
+
+          # Schema migration
+          sqitchPg
 
           # Dev tools
           haskell.packages.ghc8107.haskell-language-server
