@@ -2,11 +2,11 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE QuasiQuotes #-}
 
 module HoliplanWeb.Routes (holiplanAPI, server) where
 
@@ -29,13 +29,25 @@ import Servant (
   Handler,
   Proxy (Proxy),
   Server,
-  type (:<|>) ((:<|>)), ServerError (errBody), throwError, err404, err500
+  ServerError (errBody),
+  err404,
+  err500,
+  throwError,
+  type (:<|>) ((:<|>)),
  )
 
 import Control.Concurrent.STM (TVar)
 import qualified Control.Concurrent.STM as STM (atomically, readTVar, readTVarIO, writeTVar)
 import Control.Monad.IO.Class (liftIO)
+import qualified DB
+import Data.Aeson (Result (Error, Success))
+import qualified Data.Aeson as Aeson
 import qualified Data.Foldable as Foldable (find)
+import Hasql.Pool (Pool)
+import qualified Hasql.Pool as Pool (use)
+import qualified Hasql.Session as Session
+import Hasql.TH (singletonStatement, vectorStatement)
+import qualified Hasql.Transaction.Sessions as Transaction.Sessions
 import Servant.API (
   Capture,
   DeleteNoContent,
@@ -54,14 +66,10 @@ import Servant.API (
   (:>),
  )
 import Servant.Server (serve)
-import Hasql.Pool (Pool)
-import qualified Hasql.Pool as Pool (use)
-import Hasql.TH (vectorStatement)
-import qualified Hasql.Session as Session
 
 type HoliplanAPI =
   "plans" :> Capture "plan_id" Int :> Get '[JSON] PlanDetail
-    :<|> "plans" :> Get '[JSON] [PlanDetail]
+    :<|> "plans" :> Get '[JSON] PlanIndex
     :<|> "plans" :> ReqBody '[JSON] ReqPlan :> PostCreated '[JSON] PlanDetail
 
 data PlanDetail = PlanDetail
@@ -89,18 +97,25 @@ data ReqPlan = ReqPlan
   }
   deriving stock (Eq, Show, Generic)
 
-$(deriveJSON defaultOptions{fieldLabelModifier = drop 13} ''PlanDetail)
-$(deriveJSON defaultOptions{fieldLabelModifier = drop 5} ''Plan)
-$(deriveJSON defaultOptions{fieldLabelModifier = drop 9} ''ReqPlan)
+data PlanIndex = PlanIndex
+  { plan_index_data :: [PlanDetail]
+  , plan_index_length :: Int
+  }
+  deriving stock (Show)
+
+$(deriveJSON defaultOptions {fieldLabelModifier = drop 13} ''PlanDetail)
+$(deriveJSON defaultOptions {fieldLabelModifier = drop 5} ''Plan)
+$(deriveJSON defaultOptions {fieldLabelModifier = drop 9} ''ReqPlan)
+$(deriveJSON defaultOptions {fieldLabelModifier = drop 11} ''PlanIndex)
 
 foo =
-  [vectorStatement|
-    select content :: text from app.comments |]
+  [singletonStatement|
+    select list_plans :: jsonb from api.list_plans() |]
 
 server :: TVar [PlanDetail] -> Pool -> Server HoliplanAPI
 server tvar dbPool = do
   getPlan tvar dbPool
-    :<|> listPlans tvar dbPool
+    :<|> listPlans dbPool
     :<|> createPlan tvar dbPool
  where
   getPlan :: TVar [PlanDetail] -> Pool -> Int -> Handler PlanDetail
@@ -111,18 +126,24 @@ server tvar dbPool = do
 
     case planDetail of
       Just p -> pure p
-      Nothing -> throwError (err404 { errBody = "Plan doesn't exist" })
+      Nothing -> throwError (err404 {errBody = "Plan doesn't exist"})
 
-  listPlans :: TVar [PlanDetail] -> Pool -> Handler [PlanDetail]
-  listPlans tvar dbPool = do
-    let statement = Session.statement () foo
-    res <- liftIO $ Pool.use dbPool statement
+  listPlans :: Pool -> Handler PlanIndex
+  listPlans dbPool = do
+    -- let statement = Session.statement () foo
+    res <- liftIO $ Pool.use dbPool (DB.authQuery Nothing () foo)
 
     case res of
-      Left _ -> throwError (err500 { errBody = "shit's fucked" })
-      Right t -> liftIO (print t)
+      Left e -> do
+        liftIO (print e)
+        throwError (err500 {errBody = "shit's fucked"})
+      Right t -> do
+        let foo = Aeson.fromJSON @PlanIndex t
 
-    liftIO $ STM.readTVarIO tvar
+        case foo of
+          Success pi -> pure pi
+          Error t -> do
+            throwError (err500 {errBody = "bruh"})
 
   createPlan :: TVar [PlanDetail] -> Pool -> ReqPlan -> Handler PlanDetail
   createPlan tvar dbPool reqPlan = do

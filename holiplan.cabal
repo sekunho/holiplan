@@ -35,7 +35,6 @@ library
         HoliplanWeb.Routes,
         HoliplanWeb.Server,
         DB
-
     -- Modules included in this library but not exported.
     -- other-modules:
 
@@ -46,6 +45,7 @@ library
     build-depends:
         base              ^>=4.14.3.0,
         text              ^>=2.0,
+        text-show         ^>=3.9,
         time              ^>=1.11,
         stm               ^>=2.5,
 
