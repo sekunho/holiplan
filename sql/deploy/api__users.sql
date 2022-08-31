@@ -4,7 +4,7 @@ BEGIN;
   SET LOCAL ROLE hp_api;
 
   CREATE FUNCTION api.login(username CITEXT, password TEXT)
-    RETURNS JSONB
+    RETURNS TEXT
     LANGUAGE SQL
     AS $$
       SELECT *

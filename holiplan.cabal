@@ -44,6 +44,7 @@ library
     -- Core dependencies
     build-depends:
         base              ^>=4.14.3.0,
+        bytestring        ^>=0.11,
         text              ^>=2.0,
         text-show         ^>=3.9,
         time              ^>=1.11,
@@ -51,9 +52,10 @@ library
 
     -- Web service related stuff
     build-depends:
+        aeson             ^>=2.1,
+        cookie            ^>=0.4,
         servant           ^>=0.19,
         servant-server    ^>=0.19,
-        aeson             ^>=2.1,
 
     -- PostgreSQL integration
     build-depends:

@@ -17,7 +17,8 @@ import Data.Aeson.Types (
  )
 import Data.Maybe (fromJust)
 import Data.Text (Text)
-import qualified Data.Text as Text (pack, toLower)
+import qualified Data.Text as Text
+import qualified Data.Text.Encoding as Text.Encoding
 import Data.Time (parseTimeM)
 import Data.Time.Calendar (Day (ModifiedJulianDay))
 import Data.Time.Format (defaultTimeLocale)
@@ -42,6 +43,7 @@ import Control.Monad.IO.Class (liftIO)
 import qualified DB
 import Data.Aeson (Result (Error, Success))
 import qualified Data.Aeson as Aeson
+import Data.ByteString (ByteString)
 import qualified Data.Foldable as Foldable (find)
 import Hasql.Pool (Pool)
 import qualified Hasql.Pool as Pool (use)
@@ -66,11 +68,19 @@ import Servant.API (
   (:>),
  )
 import Servant.Server (serve)
+import qualified Web.Cookie as Cookie
+import qualified TextShow as Text.Show
 
 type HoliplanAPI =
-  "plans" :> Capture "plan_id" Int :> Get '[JSON] PlanDetail
-    :<|> "plans" :> Get '[JSON] PlanIndex
-    :<|> "plans" :> ReqBody '[JSON] ReqPlan :> PostCreated '[JSON] PlanDetail
+  -- "plans" :> Capture "plan_id" Int :> Get '[JSON] PlanDetail
+  "plans"
+    :> Header "Cookie" Text
+    :> Get '[JSON] PlanIndex
+
+-- :<|> "plans" :> ReqBody '[JSON] ReqPlan :> PostCreated '[JSON] PlanDetail
+
+newtype Session = Session {session_token :: Text}
+  deriving (Eq, Show)
 
 data PlanDetail = PlanDetail
   { plan_detail_id :: Int
@@ -107,6 +117,7 @@ $(deriveJSON defaultOptions {fieldLabelModifier = drop 13} ''PlanDetail)
 $(deriveJSON defaultOptions {fieldLabelModifier = drop 5} ''Plan)
 $(deriveJSON defaultOptions {fieldLabelModifier = drop 9} ''ReqPlan)
 $(deriveJSON defaultOptions {fieldLabelModifier = drop 11} ''PlanIndex)
+$(deriveJSON defaultOptions {fieldLabelModifier = drop 8} ''Session)
 
 foo =
   [singletonStatement|
@@ -114,10 +125,11 @@ foo =
 
 server :: TVar [PlanDetail] -> Pool -> Server HoliplanAPI
 server tvar dbPool = do
-  getPlan tvar dbPool
-    :<|> listPlans dbPool
-    :<|> createPlan tvar dbPool
+  -- getPlan tvar dbPool
+  listPlans dbPool
  where
+  -- :<|> createPlan tvar dbPool
+
   getPlan :: TVar [PlanDetail] -> Pool -> Int -> Handler PlanDetail
   getPlan tvar dbPool planId = do
     planDetails <- liftIO $ STM.readTVarIO tvar
@@ -128,10 +140,16 @@ server tvar dbPool = do
       Just p -> pure p
       Nothing -> throwError (err404 {errBody = "Plan doesn't exist"})
 
-  listPlans :: Pool -> Handler PlanIndex
-  listPlans dbPool = do
-    -- let statement = Session.statement () foo
-    res <- liftIO $ Pool.use dbPool (DB.authQuery Nothing () foo)
+  listPlans :: Pool -> Maybe Text -> Handler PlanIndex
+  listPlans dbPool session = do
+    let sessionToken =
+          fmap (Text.Show.showt . snd)
+            $ Foldable.find (\(k, _v) -> k == "session_token")
+            . Cookie.parseCookies
+            . Text.Encoding.encodeUtf8
+            =<< session
+
+    res <- liftIO $ Pool.use dbPool (DB.authQuery sessionToken () foo)
 
     case res of
       Left e -> do
