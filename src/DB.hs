@@ -3,8 +3,6 @@
 module DB (transaction, pool, query, authQuery) where
 
 import Data.Int (Int64)
-import Data.Text (Text)
-import qualified Hasql.Connection as Connection (settings)
 import Hasql.Pool (Pool)
 import qualified Hasql.Pool as Pool
 import Hasql.Session (Session)
