@@ -130,20 +130,21 @@ CREATE FUNCTION auth.authenticate()
       session_token   TEXT;
       session_user_id INT;
     BEGIN
-      SELECT current_setting('request.session_token', TRUE)
-        INTO session_token;
+      -- SELECT current_setting('request.session_token', TRUE)
+      --   INTO session_token;
 
-      SELECT auth.session_user_id(session_token)
+      SELECT current_setting('request.session_user_id', TRUE)
         INTO session_user_id;
 
+      -- SELECT auth.session_user_id(session_token)
+      --   INTO session_user_id;
+
       IF session_user_id IS NOT NULL THEN
-        SET LOCAL ROLE verified_user;
+        SET LOCAL ROLE hp_user;
 
         PERFORM set_config('auth.user_id', session_user_id :: TEXT, TRUE);
       ELSE
-        SET LOCAL ROLE anon;
-
-        PERFORM set_config('auth.user_id', '', TRUE);
+        SET LOCAL ROLE hp_anon;
       END IF;
     END;
   $$;

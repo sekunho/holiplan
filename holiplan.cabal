@@ -32,8 +32,10 @@ common shared
 library
     import: shared
     exposed-modules:
+        Holiplan.Session,
         HoliplanWeb.Routes,
         HoliplanWeb.Server,
+        HoliplanWeb.Auth,
         DB
     -- Modules included in this library but not exported.
     -- other-modules:
@@ -56,6 +58,7 @@ library
         cookie            ^>=0.4,
         servant           ^>=0.19,
         servant-server    ^>=0.19,
+        wai               ^>=3.2,
 
     -- PostgreSQL integration
     build-depends:

@@ -6,6 +6,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 
 module HoliplanWeb.Routes (holiplanAPI, server) where
@@ -45,6 +46,7 @@ import Data.Aeson (Result (Error, Success))
 import qualified Data.Aeson as Aeson
 import Data.ByteString (ByteString)
 import qualified Data.Foldable as Foldable (find)
+import Data.Int (Int64)
 import Hasql.Pool (Pool)
 import qualified Hasql.Pool as Pool (use)
 import qualified Hasql.Session as Session
@@ -67,17 +69,20 @@ import Servant.API (
   (:<|>),
   (:>),
  )
+import Servant.API.Experimental.Auth (AuthProtect)
 import Servant.Server (serve)
-import qualified Web.Cookie as Cookie
+import Servant.Server.Experimental.Auth (AuthServerData)
 import qualified TextShow as Text.Show
+import qualified Web.Cookie as Cookie
 
 type HoliplanAPI =
   -- "plans" :> Capture "plan_id" Int :> Get '[JSON] PlanDetail
   "plans"
-    :> Header "Cookie" Text
+    :> AuthProtect "cookie-auth"
     :> Get '[JSON] PlanIndex
-
 -- :<|> "plans" :> ReqBody '[JSON] ReqPlan :> PostCreated '[JSON] PlanDetail
+
+type instance AuthServerData (AuthProtect "cookie-auth") = Int64
 
 newtype Session = Session {session_token :: Text}
   deriving (Eq, Show)
@@ -140,16 +145,9 @@ server tvar dbPool = do
       Just p -> pure p
       Nothing -> throwError (err404 {errBody = "Plan doesn't exist"})
 
-  listPlans :: Pool -> Maybe Text -> Handler PlanIndex
-  listPlans dbPool session = do
-    let sessionToken =
-          fmap (Text.Show.showt . snd)
-            $ Foldable.find (\(k, _v) -> k == "session_token")
-            . Cookie.parseCookies
-            . Text.Encoding.encodeUtf8
-            =<< session
-
-    res <- liftIO $ Pool.use dbPool (DB.authQuery sessionToken () foo)
+  listPlans :: Pool -> Int64 -> Handler PlanIndex
+  listPlans dbPool userId = do
+    res <- liftIO $ Pool.use dbPool (DB.authQuery userId () foo)
 
     case res of
       Left e -> do
