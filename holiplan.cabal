@@ -55,7 +55,6 @@ library
         text              ^>=2.0,
         text-show         ^>=3.9,
         time              ^>=1.11,
-        stm               ^>=2.5,
         uuid              ^>=1.3,
         mtl               ^>=2.2,
 
@@ -88,7 +87,6 @@ executable holiplan
         base ^>=4.14.3.0,
         wai  ^>=3.2,
         warp ^>=3.3,
-        stm  ^>=2.5,
 
     hs-source-dirs:   app
     default-language: Haskell2010
