@@ -5,10 +5,7 @@ module Holiplan.Session (
   getUserId,
 ) where
 
-import Control.Monad.IO.Class (liftIO)
 import qualified DB
-import Data.Int (Int64)
-import Data.Text (Text)
 import Hasql.Pool (Pool, UsageError)
 import qualified Hasql.Pool as Pool
 import Hasql.TH (singletonStatement)

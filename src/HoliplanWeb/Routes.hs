@@ -3,7 +3,6 @@
 module HoliplanWeb.Routes (holiplanAPI, server) where
 
 import Servant (
-  Proxy (Proxy),
   Server,
   type (:<|>) ((:<|>)),
  )

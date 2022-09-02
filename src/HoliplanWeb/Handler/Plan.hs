@@ -11,9 +11,15 @@ module HoliplanWeb.Handler.Plan (
   deletePlan,
 ) where
 
-import Control.Monad.IO.Class (liftIO)
 import Hasql.Pool (Pool)
-import Holiplan.Plan (Error (ParseError, UsageError), Plan, PlanDetail, PlanId, PlanIndex, ReqPlan)
+import Holiplan.Plan (
+  Error (ParseError, UsageError),
+  Plan,
+  PlanDetail,
+  PlanId,
+  PlanIndex,
+  ReqPlan,
+ )
 import qualified Holiplan.Plan as Plan
 import Holiplan.Session (CurrentUserId)
 import HoliplanWeb.Handler.Error (throw500)
@@ -43,6 +49,7 @@ type PlanAPI =
       :> Capture "plan_id" PlanId
       :> ReqBody '[JSON] ReqPlan
       :> Patch '[JSON] Plan
+    -- DELETE /plans/:plan_id
     :<|> "plans"
       :> AuthProtect "cookie-auth"
       :> Capture "plan_id" PlanId
@@ -89,9 +96,7 @@ editPlan dbPool currentUserId planId body = do
     Left e ->
       case e of
         UsageError _ -> throw500 "Failed to update plan"
-        ParseError e ->
-          liftIO (print e)
-            >> throw500 "Failed to parse plan"
+        ParseError _ -> throw500 "Failed to parse plan"
 
 deletePlan :: Pool -> CurrentUserId -> PlanId -> Handler NoContent
 deletePlan dbPool currentUserId planId = do

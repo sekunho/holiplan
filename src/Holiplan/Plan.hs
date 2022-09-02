@@ -23,19 +23,15 @@ import Data.Aeson (Result (Error, Success), ToJSON)
 import qualified Data.Aeson as Aeson
 import Data.Aeson.TH (Options (fieldLabelModifier), defaultOptions, deriveJSON)
 import Data.Aeson.Types (FromJSON)
-import Data.Coerce (coerce)
-import Data.Int (Int64)
-import Data.Text (Text)
 import Data.Time (Day)
 import Data.UUID (UUID)
 import qualified Data.UUID as UUID
-import GHC.Generics (Generic)
-import Hasql.Pool (Pool, UsageError)
 import qualified Hasql.Pool as Pool
-import Hasql.TH (singletonStatement, resultlessStatement)
+import Hasql.TH (resultlessStatement, singletonStatement)
 import Holiplan.Session (CurrentUserId (CurrentUserId))
 import Servant (parseUrlPiece)
 import Servant.API (FromHttpApiData)
+import Hasql.Pool (UsageError, Pool)
 
 newtype PlanId = PlanId UUID
   deriving stock (Eq, Show, Generic)
@@ -204,5 +200,5 @@ deletePlan dbPool currentUserId planId =
       planId' = coerce @PlanId @UUID planId
 
       currentUserId' = coerce @CurrentUserId @Int64 currentUserId
-  in Pool.use dbPool $
+   in Pool.use dbPool $
         DB.authQuery currentUserId' planId' statement
