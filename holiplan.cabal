@@ -7,8 +7,7 @@ synopsis:
 -- description:
 homepage:
 
--- A URL where users can report bugs.
--- bug-reports:
+-- A URL where users can report bugs. -- bug-reports:
 license:            AGPL-3.0-or-later
 license-file:       LICENSE
 author:             SEKUN
@@ -19,19 +18,63 @@ maintainer:         sekun@hey.com
 category:           Web
 extra-source-files: CHANGELOG.md
 
-library
-    exposed-modules:  MyLib
+common shared
+    default-language: Haskell2010
+    default-extensions:
+        NoStarIsType
+        DerivingStrategies
+        DerivingVia
+        ExplicitForAll
+        OverloadedStrings
+        StrictData
+        TypeApplications
 
+library
+    import: shared
+    exposed-modules:
+        Holiplan.Plan,
+        Holiplan.Session,
+        HoliplanWeb.Auth,
+        HoliplanWeb.Handler.Error,
+        HoliplanWeb.Handler.Plan,
+        HoliplanWeb.Routes,
+        HoliplanWeb.Server,
+        DB
     -- Modules included in this library but not exported.
     -- other-modules:
 
-    -- LANGUAGE extensions used by modules in this package.
-    -- other-extensions:
-    build-depends:    base ^>=4.14.3.0
+    ghc-options: -Wall
+
     hs-source-dirs:   src
     default-language: Haskell2010
 
+    -- Core dependencies
+    build-depends:
+        base              ^>=4.14.3.0,
+        bytestring        ^>=0.11,
+        text              ^>=2.0,
+        text-show         ^>=3.9,
+        time              ^>=1.11,
+        uuid              ^>=1.3,
+        mtl               ^>=2.2,
+
+    -- Web service related stuff
+    build-depends:
+        aeson             ^>=2.1,
+        cookie            ^>=0.4,
+        servant           ^>=0.19,
+        servant-server    ^>=0.19,
+        wai               ^>=3.2,
+
+    -- PostgreSQL integration
+    build-depends:
+        hasql             ^>=1.6,
+        hasql-pool        ^>=0.7,
+        hasql-th          ^>=0.4,
+        hasql-transaction ^>=1.0,
+
 executable holiplan
+    import: shared
     main-is:          Main.hs
 
     -- Modules included in this executable, other than Main.
@@ -40,8 +83,10 @@ executable holiplan
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
     build-depends:
+        holiplan,
         base ^>=4.14.3.0,
-        holiplan
+        wai  ^>=3.2,
+        warp ^>=3.3,
 
     hs-source-dirs:   app
     default-language: Haskell2010

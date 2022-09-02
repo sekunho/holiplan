@@ -1,8 +1,8 @@
-module Main where
+module Main (main) where
 
-import qualified MyLib (someFunc)
+import qualified DB (pool)
+import HoliplanWeb.Server (app)
+import Network.Wai.Handler.Warp (run)
 
 main :: IO ()
-main = do
-  putStrLn "Hello, Haskell!"
-  MyLib.someFunc
+main = DB.pool 20 >>= \dbPool -> run 8080 (app dbPool)

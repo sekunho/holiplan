@@ -13,11 +13,22 @@
     in {
       devShells.${system}.default = pkgs.mkShell rec {
         buildInputs = with pkgs; [
-          haskell.packages.ghc8107.cabal-install
-          haskell.packages.ghc8107.haskell-language-server
+          # Haskal
           haskell.compiler.ghc8107
+          haskell.packages.ghc8107.cabal-install
 
+          # Schema migration
+          sqitchPg
+
+          # Dev tools
+          haskell.packages.ghc8107.haskell-language-server
+          haskell.packages.ghc8107.fourmolu
+          haskell.packages.ghc8107.implicit-hie
+          hlint
+
+          pkg-config
           zlib
+          postgresql
         ];
 
         LD_LIBRARY_PATH = lib.makeLibraryPath buildInputs;
