@@ -2,9 +2,8 @@
 
 module HoliplanWeb.Auth (authHandler) where
 
-import Control.Monad.IO.Class (liftIO)
-import Data.Coerce (coerce)
-import Data.Int (Int64)
+import qualified Data.List as List
+import qualified Data.Text.Encoding as Text
 import Hasql.Pool (Pool)
 import Holiplan.Session (CurrentUserId)
 import qualified Holiplan.Session as Session
@@ -14,7 +13,6 @@ import Servant.Server (err401, err500)
 import Servant.Server.Experimental.Auth (AuthHandler)
 import qualified Servant.Server.Experimental.Auth as Auth (mkAuthHandler)
 import Web.Cookie (parseCookies)
-import qualified Data.Text.Encoding as Text
 
 authHandler :: Pool -> AuthHandler Request CurrentUserId
 authHandler dbPool = Auth.mkAuthHandler (authenticate dbPool)
@@ -23,14 +21,14 @@ authenticate :: Pool -> Request -> Handler CurrentUserId
 authenticate dbPool req = do
   let cookie =
         maybeToEither "Missing cookie header" $
-          lookup "cookie" $
+          List.lookup "cookie" $
             requestHeaders req
 
       sessionToken =
         cookie >>= \c ->
           maybeToEither
             "Missing token in cookie"
-            (Text.decodeUtf8 <$> lookup "session_token" (parseCookies c))
+            (Text.decodeUtf8 <$> List.lookup "session_token" (parseCookies c))
 
   case sessionToken of
     Left e -> throw401 e
