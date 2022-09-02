@@ -3,30 +3,40 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module Holiplan.Plan ( PlanDetail (..), PlanIndex (..), ReqPlan (..),
+module Holiplan.Plan (
+  PlanDetail (..),
+  PlanIndex (..),
+  ReqPlan (..),
   Plan (..),
   Error (..),
+  PlanId (..),
   listPlans,
   createPlan,
+  getPlanDetail,
 ) where
 
 import qualified DB
-import Data.Aeson (Result (Error, Success))
+import Data.Aeson (Result (Error, Success), ToJSON)
 import qualified Data.Aeson as Aeson
 import Data.Aeson.TH (Options (fieldLabelModifier), defaultOptions, deriveJSON)
+import Data.Aeson.Types (FromJSON)
 import Data.Coerce (coerce)
 import Data.Int (Int64)
 import Data.Text (Text)
 import Data.Time (Day)
+import Data.UUID (UUID)
 import GHC.Generics (Generic)
 import Hasql.Pool (Pool, UsageError)
 import qualified Hasql.Pool as Pool
 import Hasql.TH (singletonStatement)
 import Holiplan.Session (CurrentUserId (CurrentUserId))
-import Data.UUID (UUID)
+
+newtype PlanId = PlanId UUID
+  deriving stock (Eq, Show, Generic)
+  deriving (FromJSON, ToJSON) via UUID
 
 data PlanDetail = PlanDetail
-  { plan_detail_id :: UUID,
+  { plan_detail_id :: PlanId,
     plan_detail_date :: Day,
     plan_detail_name :: Text,
     plan_detail_description :: Text,
@@ -36,7 +46,7 @@ data PlanDetail = PlanDetail
   deriving stock (Eq, Show, Generic)
 
 data Plan = Plan
-  { plan_plan_id :: UUID,
+  { plan_plan_id :: PlanId,
     plan_date :: Day,
     plan_name :: Text,
     plan_description :: Text
@@ -119,3 +129,27 @@ createPlan dbPool currentUserId (ReqPlan name desc date) =
               Error e -> pure (Left $ ParseError e)
           Left e -> pure (Left $ UsageError e)
    in plan
+
+getPlanDetail :: Pool -> CurrentUserId -> PlanId -> IO (Either Error PlanDetail)
+getPlanDetail dbPool currentUserId planId =
+  let statement =
+        [singletonStatement|
+          SELECT get_plan_details :: JSONB
+            FROM api.get_plan_details($1 :: UUID)
+        |]
+
+      result =
+        Pool.use dbPool $
+          DB.authQuery
+            (coerce @CurrentUserId @Int64 currentUserId)
+            (coerce @PlanId @UUID planId)
+            statement
+
+      planDetail =
+        result >>= \case
+          Right resultValue ->
+            case Aeson.fromJSON @PlanDetail resultValue of
+              Success planDetail' -> pure (Right planDetail')
+              Error e -> pure (Left $ ParseError e)
+          Left e -> pure (Left $ UsageError e)
+   in planDetail

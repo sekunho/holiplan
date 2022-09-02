@@ -15,7 +15,10 @@ import qualified HoliplanWeb.Handler.Plan as PlanHandler
 type HoliplanAPI = PlanAPI
 
 server :: Pool -> Server HoliplanAPI
-server dbPool = PlanHandler.listPlans dbPool :<|> PlanHandler.createPlan dbPool
+server dbPool =
+  PlanHandler.listPlans dbPool
+    :<|> PlanHandler.createPlan dbPool
+    :<|> PlanHandler.getPlanDetail dbPool
 
 holiplanAPI :: Proxy HoliplanAPI
 holiplanAPI = Proxy
