@@ -11,7 +11,7 @@ CREATE TABLE auth.sessions (
         DEFAULT encode(gen_random_bytes(32), 'base64'),
   user_id INTEGER REFERENCES app.users (user_id),
   created_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
-  expires_on TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp() + '15min' :: INTERVAL,
+  expires_on TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp() + '30 days' :: INTERVAL,
 
   CHECK (expires_on > created_at)
 );
