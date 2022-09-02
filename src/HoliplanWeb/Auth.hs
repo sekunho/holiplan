@@ -3,21 +3,23 @@
 module HoliplanWeb.Auth (authHandler) where
 
 import Control.Monad.IO.Class (liftIO)
+import Data.Coerce (coerce)
 import Data.Int (Int64)
 import Hasql.Pool (Pool)
+import Holiplan.Session (CurrentUserId)
 import qualified Holiplan.Session as Session
 import Network.Wai (Request (requestHeaders))
 import Servant (Handler, ServerError (errBody), throwError)
 import Servant.Server (err401, err500)
 import Servant.Server.Experimental.Auth (AuthHandler)
 import qualified Servant.Server.Experimental.Auth as Auth (mkAuthHandler)
-import qualified TextShow as Text.Show
 import Web.Cookie (parseCookies)
+import qualified Data.Text.Encoding as Text
 
-authHandler :: Pool -> AuthHandler Request Int64
+authHandler :: Pool -> AuthHandler Request CurrentUserId
 authHandler dbPool = Auth.mkAuthHandler (authenticate dbPool)
 
-authenticate :: Pool -> Request -> Handler Int64
+authenticate :: Pool -> Request -> Handler CurrentUserId
 authenticate dbPool req = do
   let cookie =
         maybeToEither "Missing cookie header" $
@@ -28,12 +30,14 @@ authenticate dbPool req = do
         cookie >>= \c ->
           maybeToEither
             "Missing token in cookie"
-            (Text.Show.showt <$> lookup "session_token" (parseCookies c))
+            (Text.decodeUtf8 <$> lookup "session_token" (parseCookies c))
 
   case sessionToken of
     Left e -> throw401 e
     Right sessionToken' -> do
-      result <- liftIO $ Session.getUserId dbPool sessionToken'
+      result <- liftIO $ do
+        print sessionToken'
+        Session.getUserId dbPool sessionToken'
 
       case result of
         -- TODO: Improve error handling
@@ -42,7 +46,7 @@ authenticate dbPool req = do
         Left e -> do
           liftIO $ print e
           throw500 "Something terrible just happened"
-        Right userId -> pure userId
+        Right userId -> pure (coerce @Int64 @CurrentUserId userId)
  where
   throw401 msg = throwError $ err401 {errBody = msg}
   throw500 msg = throwError $ err500 {errBody = msg}

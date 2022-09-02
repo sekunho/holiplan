@@ -3,13 +3,13 @@
 
 module HoliplanWeb.Server (app) where
 
-import Data.Int (Int64)
 import Hasql.Pool (Pool)
 import HoliplanWeb.Auth (authHandler)
 import HoliplanWeb.Routes (holiplanAPI, server)
 import Network.Wai (Request)
 import Servant.Server as Server
 import Servant.Server.Experimental.Auth (AuthHandler)
+import Holiplan.Session (CurrentUserId)
 
 app :: Pool -> Application
 app dbPool =
@@ -18,5 +18,5 @@ app dbPool =
     (genAuthServerContext dbPool)
     (server dbPool)
 
-genAuthServerContext :: Pool -> Context (AuthHandler Request Int64 ': '[])
+genAuthServerContext :: Pool -> Context (AuthHandler Request CurrentUserId ': '[])
 genAuthServerContext dbPool = authHandler dbPool :. EmptyContext

@@ -29,7 +29,7 @@ BEGIN;
           )
         RETURNING
           json_build_object
-            ( 'id'
+            ( 'plan_id'
             , plan_id
             , 'name'
             , name
