@@ -139,7 +139,7 @@ BEGIN;
           WHERE plans.plan_id = in_plan_id
           RETURNING
             json_build_object
-              ( 'id'
+              ( 'plan_id'
               , plan_id
               , 'name'
               , name

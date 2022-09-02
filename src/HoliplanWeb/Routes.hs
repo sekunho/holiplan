@@ -19,6 +19,8 @@ server dbPool =
   PlanHandler.listPlans dbPool
     :<|> PlanHandler.createPlan dbPool
     :<|> PlanHandler.getPlanDetail dbPool
+    :<|> PlanHandler.editPlan dbPool
+    :<|> PlanHandler.deletePlan dbPool
 
 holiplanAPI :: Proxy HoliplanAPI
 holiplanAPI = Proxy
