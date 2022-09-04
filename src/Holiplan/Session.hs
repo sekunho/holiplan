@@ -109,17 +109,14 @@ login dbPool (Creds uname pw) =
       pw' :: Text
       pw' = coerce @Password @Text pw
 
-      transaction =
-        Transaction.sql "SELECT * FROM auth.authenticate()"
-          >> Transaction.statement
-            (uname', pw')
-            [singletonStatement|
+      statement =
+        [singletonStatement|
               SELECT login :: JSONB
                 FROM api.login($1 :: TEXT, $2 :: TEXT)
             |]
 
       result =
-        Pool.use dbPool (DB.transaction transaction)
+        Pool.use dbPool (DB.query (uname', pw') statement)
 
       session =
         result >>= \case

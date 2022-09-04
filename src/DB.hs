@@ -2,7 +2,6 @@
 
 module DB (transaction, pool, query, authQuery) where
 
-import Data.Int (Int64)
 import Hasql.Pool (Pool)
 import qualified Hasql.Pool as Pool
 import Hasql.Session (Session)
@@ -19,7 +18,10 @@ pool poolCapacity =
   Pool.acquire poolCapacity "host=localhost port=5432 dbname=holiplan"
 
 query :: forall a b. a -> Statement a b -> Session b
-query param statement = transaction $ Transaction.statement param statement
+query param statement =
+  transaction $
+    Transaction.sql "SET LOCAL ROLE hp_anon"
+      >> Transaction.statement param statement
 
 -- | Runs a query in an authenticated setting.
 authQuery :: forall a b. Int64 -> a -> Statement a b -> Session b
