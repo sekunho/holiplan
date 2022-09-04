@@ -39,7 +39,7 @@ BEGIN;
     user_id  BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
 
     -- TODO: Validate
-    username CITEXT NOT NULL,
+    username CITEXT UNIQUE NOT NULL,
     password TEXT NOT NULL,
 
     CONSTRAINT password_length
