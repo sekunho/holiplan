@@ -22,7 +22,7 @@ query :: forall a b. a -> Statement a b -> Session b
 query param statement = transaction $ Transaction.statement param statement
 
 -- | Runs a query in an authenticated setting.
-authQuery :: Int64 -> a -> Statement a b -> Session b
+authQuery :: forall a b. Int64 -> a -> Statement a b -> Session b
 authQuery userId param statement = do
   let setAnonRole = Transaction.sql "SET LOCAL ROLE hp_anon"
 

@@ -1,11 +1,13 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module HoliplanWeb.Auth (authHandler) where
 
 import qualified Data.List as List
 import qualified Data.Text.Encoding as Text
 import Hasql.Pool (Pool)
-import Holiplan.Session (CurrentUserId)
+import Holiplan.Session (UserSession)
 import qualified Holiplan.Session as Session
 import Network.Wai (Request (requestHeaders))
 import Servant (Handler, ServerError (errBody), throwError)
@@ -14,10 +16,10 @@ import Servant.Server.Experimental.Auth (AuthHandler)
 import qualified Servant.Server.Experimental.Auth as Auth (mkAuthHandler)
 import Web.Cookie (parseCookies)
 
-authHandler :: Pool -> AuthHandler Request CurrentUserId
+authHandler :: Pool -> AuthHandler Request UserSession
 authHandler dbPool = Auth.mkAuthHandler (authenticate dbPool)
 
-authenticate :: Pool -> Request -> Handler CurrentUserId
+authenticate :: Pool -> Request -> Handler UserSession
 authenticate dbPool req = do
   let cookie =
         maybeToEither "Missing cookie header" $
@@ -32,10 +34,11 @@ authenticate dbPool req = do
 
   case sessionToken of
     Left e -> throw401 e
+    Right "" -> throw401 "Need to login"
     Right sessionToken' -> do
       result <- liftIO $ do
         print sessionToken'
-        Session.getUserId dbPool sessionToken'
+        Session.getSessionByToken dbPool sessionToken'
 
       case result of
         -- TODO: Improve error handling
@@ -44,7 +47,7 @@ authenticate dbPool req = do
         Left e -> do
           liftIO $ print e
           throw500 "Something terrible just happened"
-        Right userId -> pure (coerce @Int64 @CurrentUserId userId)
+        Right currentUserSession -> pure currentUserSession
  where
   throw401 msg = throwError $ err401 {errBody = msg}
   throw500 msg = throwError $ err500 {errBody = msg}

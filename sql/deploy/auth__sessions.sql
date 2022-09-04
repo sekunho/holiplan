@@ -57,17 +57,24 @@ COMMENT ON FUNCTION auth.clean_sessions IS
 
 --------------------------------------------------------------------------------
 
-CREATE FUNCTION auth.login(username CITEXT, password TEXT)
-  RETURNS TEXT
+CREATE OR REPLACE FUNCTION auth.login(username CITEXT, password TEXT)
+  RETURNS JSONB
   LANGUAGE sql
   SECURITY DEFINER
   AS $$
     INSERT INTO auth.active_sessions(user_id)
       SELECT user_id
-      FROM app.users
-      WHERE username = login.username
-        AND password = crypt(login.password, password)
-      RETURNING token;
+        FROM app.users
+        WHERE username = login.username
+          AND password = crypt(login.password, password)
+        RETURNING jsonb_build_object
+          ( 'token'
+          , token
+          , 'expires_on'
+          , expires_on
+          , 'user_id'
+          , user_id
+          );
   $$;
 
 COMMENT ON FUNCTION auth.login IS
@@ -108,17 +115,26 @@ GRANT EXECUTE ON FUNCTION auth.logout TO hp_user;
 
 --------------------------------------------------------------------------------
 
-CREATE FUNCTION auth.session_user_id(session_token TEXT)
-  RETURNS BIGINT
+CREATE FUNCTION auth.get_user_session(session_token TEXT)
+  RETURNS JSONB
   LANGUAGE sql
   SECURITY DEFINER
   AS $$
-    SELECT user_id
-    FROM auth.active_sessions
-    WHERE token = session_token;
+    SELECT jsonb_build_object
+            ( 'user_id'
+            , user_id
+            , 'token'
+            , session_token
+            , 'expires_on'
+            , expires_on
+            -- , 'created_at'
+            -- , created_at
+            )
+      FROM auth.active_sessions
+      WHERE token = session_token;
   $$;
 
-GRANT EXECUTE ON FUNCTION auth.session_user_id TO hp_anon;
+GRANT EXECUTE ON FUNCTION auth.get_user_session TO hp_anon;
 
 --------------------------------------------------------------------------------
 
