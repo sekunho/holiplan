@@ -24,10 +24,12 @@ common shared
         NoStarIsType
         DerivingStrategies
         DerivingVia
+        DeriveGeneric
         ExplicitForAll
         OverloadedStrings
         StrictData
         TypeApplications
+        InstanceSigs
 
 library
     import: shared
@@ -37,6 +39,7 @@ library
         HoliplanWeb.Auth,
         HoliplanWeb.Handler.Error,
         HoliplanWeb.Handler.Plan,
+        HoliplanWeb.Handler.Session,
         HoliplanWeb.Routes,
         HoliplanWeb.Server,
         DB
