@@ -9,6 +9,9 @@ module Holiplan.Plan (
   PlanIndex (..),
   ReqPlan (..),
   Plan (..),
+  ReqComment (..),
+  Comment (..),
+  CommentId (..),
   Error (..),
   PlanId (..),
   listPlans,
@@ -16,6 +19,9 @@ module Holiplan.Plan (
   getPlanDetail,
   editPlan,
   deletePlan,
+  addComment,
+  editComment,
+  deleteComment,
 ) where
 
 import qualified DB
@@ -23,26 +29,17 @@ import Data.Aeson (Result (Error, Success), ToJSON)
 import qualified Data.Aeson as Aeson
 import Data.Aeson.TH (Options (fieldLabelModifier), defaultOptions, deriveJSON)
 import Data.Aeson.Types (FromJSON)
-import Data.Time (Day)
+import Data.Time (Day, UTCTime)
 import Data.UUID (UUID)
-import qualified Data.UUID as UUID
+import Hasql.Pool (Pool, UsageError)
 import qualified Hasql.Pool as Pool
 import Hasql.TH (resultlessStatement, singletonStatement)
 import Holiplan.Session (CurrentUserId (CurrentUserId))
-import Servant (parseUrlPiece)
 import Servant.API (FromHttpApiData)
-import Hasql.Pool (UsageError, Pool)
 
 newtype PlanId = PlanId UUID
   deriving stock (Eq, Show, Generic)
-  deriving (FromJSON, ToJSON) via UUID
-
-instance FromHttpApiData PlanId where
-  parseUrlPiece :: Text -> Either Text PlanId
-  parseUrlPiece uuid =
-    case UUID.fromText uuid of
-      Just uuid' -> Right (PlanId uuid')
-      Nothing -> Left "Invalid UUID"
+  deriving (FromJSON, ToJSON, FromHttpApiData) via UUID
 
 data PlanDetail = PlanDetail
   { plan_detail_id :: PlanId,
@@ -50,7 +47,7 @@ data PlanDetail = PlanDetail
     plan_detail_name :: Text,
     plan_detail_description :: Text,
     plan_detail_events :: [Text],
-    plan_detail_comments :: [Text]
+    plan_detail_comments :: [Comment]
   }
   deriving stock (Eq, Show, Generic)
 
@@ -75,10 +72,29 @@ data PlanIndex = PlanIndex
   }
   deriving stock (Show)
 
+newtype CommentId = CommentId UUID
+  deriving stock (Eq, Show)
+  deriving (FromJSON, ToJSON, FromHttpApiData) via UUID
+
+data Comment = Comment
+  { comment_id :: CommentId,
+    user_id :: Int64,
+    content :: Text,
+    created_at :: UTCTime
+  }
+  deriving stock (Eq, Show, Generic)
+
+newtype ReqComment = ReqComment
+  {req_comment_content :: Text}
+
+instance FromJSON Comment
+instance ToJSON Comment
+
 $(deriveJSON defaultOptions {fieldLabelModifier = drop 12} ''PlanDetail)
 $(deriveJSON defaultOptions {fieldLabelModifier = drop 5} ''Plan)
 $(deriveJSON defaultOptions {fieldLabelModifier = drop 9} ''ReqPlan)
 $(deriveJSON defaultOptions {fieldLabelModifier = drop 11} ''PlanIndex)
+$(deriveJSON defaultOptions {fieldLabelModifier = drop 12} ''ReqComment)
 
 data Error
   = UsageError UsageError
@@ -159,7 +175,7 @@ getPlanDetail dbPool currentUserId planId =
           Right resultValue ->
             case Aeson.fromJSON @PlanDetail resultValue of
               Success planDetail' -> pure (Right planDetail')
-              Error e -> pure (Left $ ParseError e)
+              Error e -> liftIO (print e) >> pure (Left $ ParseError e)
           Left e -> pure (Left $ UsageError e)
    in planDetail
 
@@ -202,3 +218,72 @@ deletePlan dbPool currentUserId planId =
       currentUserId' = coerce @CurrentUserId @Int64 currentUserId
    in Pool.use dbPool $
         DB.authQuery currentUserId' planId' statement
+
+addComment :: Pool -> CurrentUserId -> ReqComment -> PlanId -> IO (Either Error Comment)
+addComment dbPool currentUserId (ReqComment comment) planId =
+  let statement =
+        [singletonStatement|
+          SELECT create_comment :: JSONB
+            FROM api.create_comment($1 :: UUID, $2 :: TEXT)
+        |]
+
+      planId' = coerce @PlanId @UUID planId
+
+      currentUserId' = coerce @CurrentUserId @Int64 currentUserId
+
+      result =
+        Pool.use dbPool $
+          DB.authQuery
+            currentUserId'
+            (planId', comment)
+            statement
+
+      comment' =
+        result >>= \case
+          Right resultValue ->
+            case Aeson.fromJSON @Comment resultValue of
+              Success c -> pure (Right c)
+              Error e -> liftIO (print e) >> pure (Left $ ParseError e)
+          Left e -> pure (Left $ UsageError e)
+   in comment'
+
+editComment :: Pool -> CurrentUserId -> CommentId -> ReqComment -> IO (Either Error Comment)
+editComment dbPool currentUserId commentId (ReqComment comment) =
+  let statement =
+        [singletonStatement|
+          SELECT edit_comment :: JSONB
+            FROM api.edit_comment($1 :: UUID, $2 :: TEXT)
+        |]
+
+      currentUserId' = coerce @CurrentUserId @Int64 currentUserId
+
+      commentId' = coerce @CommentId @UUID commentId
+
+      result =
+        Pool.use dbPool $
+          DB.authQuery
+            currentUserId'
+            (commentId', comment)
+            statement
+
+      comment' =
+        result >>= \case
+          Right resultValue ->
+            case Aeson.fromJSON @Comment resultValue of
+              Success c -> pure (Right c)
+              Error e -> pure (Left $ ParseError e)
+          Left e -> pure (Left $ UsageError e)
+   in comment'
+
+deleteComment :: Pool -> CurrentUserId -> CommentId -> IO (Either UsageError ())
+deleteComment dbPool currentUserId commentId =
+  let statement =
+        [resultlessStatement|
+          SELECT FROM api.delete_comment($1 :: UUID)
+        |]
+
+      commentId' = coerce @CommentId @UUID commentId
+
+      currentUserId' = coerce @CurrentUserId @Int64 currentUserId
+   in Pool.use dbPool $
+        DB.authQuery currentUserId' commentId' statement

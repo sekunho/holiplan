@@ -47,7 +47,8 @@ BEGIN;
     comment_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     plan_id    UUID REFERENCES app.plans,
     user_id    BIGINT REFERENCES app.users,
-    content    TEXT NOT NULL
+    content    TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
   );
 
   CREATE INDEX comment_plan_index ON app.comments(plan_id);
