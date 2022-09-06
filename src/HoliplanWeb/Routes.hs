@@ -31,6 +31,9 @@ planServer dbPool =
     :<|> PlanHandler.getPlanDetail dbPool
     :<|> PlanHandler.editPlan dbPool
     :<|> PlanHandler.deletePlan dbPool
+    :<|> PlanHandler.addComment dbPool
+    :<|> PlanHandler.editComment dbPool
+    :<|> PlanHandler.deleteComment dbPool
 
 sessionServer :: Pool -> Server SessionAPI
 sessionServer dbPool =

@@ -343,7 +343,7 @@ BEGIN;
           )
         RETURNING
           json_build_object
-            ( 'id'
+            ( 'comment_id'
             , comment_id
             , 'content'
             , content
@@ -351,6 +351,8 @@ BEGIN;
             , user_id
             , 'plan_id'
             , plan_id
+            , 'created_at'
+            , created_at
             );
     $$;
 
@@ -365,7 +367,7 @@ BEGIN;
         WHERE comment_id = edit_comment.comment_id
         RETURNING
           json_build_object
-            ( 'id'
+            ( 'comment_id'
             , comment_id
             , 'content'
             , content
@@ -373,6 +375,8 @@ BEGIN;
             , user_id
             , 'plan_id'
             , plan_id
+            , 'created_at'
+            , created_at
             );
     $$;
 
@@ -387,7 +391,7 @@ BEGIN;
         WHERE comment_id = delete_comment.comment_id
         RETURNING
           json_build_object
-            ( 'id'
+            ( 'comment_id'
             , comment_id
             , 'content'
             , content
@@ -395,6 +399,8 @@ BEGIN;
             , user_id
             , 'plan_id'
             , plan_id
+            , 'created_at'
+            , created_at
             );
     $$;
 

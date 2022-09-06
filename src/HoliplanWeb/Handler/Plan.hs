@@ -1,6 +1,6 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
 
 module HoliplanWeb.Handler.Plan (
   type PlanAPI,
@@ -9,15 +9,21 @@ module HoliplanWeb.Handler.Plan (
   getPlanDetail,
   editPlan,
   deletePlan,
+  addComment,
+  editComment,
+  deleteComment,
 ) where
 
 import Hasql.Pool (Pool)
 import Holiplan.Plan (
+  Comment,
+  CommentId,
   Error (ParseError, UsageError),
   Plan,
   PlanDetail,
   PlanId,
   PlanIndex,
+  ReqComment,
   ReqPlan,
  )
 import qualified Holiplan.Plan as Plan
@@ -49,6 +55,22 @@ type PlanAPI =
     -- DELETE /plans/:plan_id
     :<|> AuthProtect "cookie-auth"
       :> Capture "plan_id" PlanId
+      :> DeleteNoContent
+    :<|> AuthProtect "cookie-auth"
+      :> Capture "plan_id" PlanId
+      :> "comments"
+      :> ReqBody '[JSON] ReqComment
+      :> PostCreated '[JSON] Comment
+    :<|> AuthProtect "cookie-auth"
+      :> Capture "plan_id" PlanId
+      :> "comments"
+      :> Capture "comment_id" CommentId
+      :> ReqBody '[JSON] ReqComment
+      :> Patch '[JSON] Comment
+    :<|> AuthProtect "cookie-auth"
+      :> Capture "plan_id" PlanId
+      :> "comments"
+      :> Capture "comment_id" CommentId
       :> DeleteNoContent
 
 listPlans :: Pool -> UserSession -> Handler PlanIndex
@@ -99,3 +121,39 @@ deletePlan dbPool (UserSession currentUserId _ _) planId = do
   case result of
     Right _ -> pure NoContent
     Left _ -> throw500 "Failed to update plan"
+
+addComment :: Pool -> UserSession -> PlanId -> ReqComment -> Handler Comment
+addComment dbPool (UserSession currentUserId _ _) planId body = do
+  result <- liftIO $ Plan.addComment dbPool currentUserId body planId
+
+  case result of
+    Right comment -> pure comment
+    Left e ->
+      case e of
+        UsageError _ -> throw500 "Failed to comment"
+        ParseError _ -> throw500 "Failed to parse comment"
+
+editComment ::
+  Pool ->
+  UserSession ->
+  PlanId ->
+  CommentId ->
+  ReqComment ->
+  Handler Comment
+editComment dbPool (UserSession currentUserId _ _) _planId commentId body = do
+  result <- liftIO $ Plan.editComment dbPool currentUserId commentId body
+
+  case result of
+    Right comment -> pure comment
+    Left e ->
+      case e of
+        UsageError _ -> throw500 "Failed to edit comment"
+        ParseError _ -> throw500 "Failed to parse comment"
+
+deleteComment :: Pool -> UserSession -> PlanId -> CommentId -> Handler NoContent
+deleteComment dbPool (UserSession currentUserId _ _) _planId commentId = do
+  result <- liftIO $ Plan.deleteComment dbPool currentUserId commentId
+
+  case result of
+    Right _ -> pure NoContent
+    Left _ -> throw500 "Failed to delete comment"
