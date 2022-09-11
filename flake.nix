@@ -25,6 +25,7 @@
           haskell.packages.ghc8107.fourmolu
           haskell.packages.ghc8107.implicit-hie
           hlint
+          watchexec
 
           pkg-config
           zlib
