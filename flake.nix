@@ -14,16 +14,16 @@
       devShells.${system}.default = pkgs.mkShell rec {
         buildInputs = with pkgs; [
           # Haskal
-          haskell.compiler.ghc8107
-          haskell.packages.ghc8107.cabal-install
+          haskell.compiler.ghc924
+          haskell.packages.ghc924.cabal-install
 
           # Schema migration
           sqitchPg
 
           # Dev tools
-          haskell.packages.ghc8107.haskell-language-server
-          haskell.packages.ghc8107.fourmolu
-          haskell.packages.ghc8107.implicit-hie
+          haskell.packages.ghc924.haskell-language-server
+          haskell.packages.ghc924.fourmolu
+          haskell.packages.ghc924.implicit-hie
           hlint
           watchexec
 
