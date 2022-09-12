@@ -30,6 +30,8 @@ common shared
         StrictData
         TypeApplications
         InstanceSigs
+        NoFieldSelectors
+        DuplicateRecordFields
 
 library
     import: shared
@@ -60,7 +62,7 @@ library
 
     -- Core dependencies
     build-depends:
-        base              ^>=4.14.3.0,
+        base              ^>=4.16,
         bytestring        ^>=0.11,
         text              ^>=2.0,
         text-show         ^>=3.9,
@@ -95,7 +97,7 @@ executable holiplan
     -- other-extensions:
     build-depends:
         holiplan,
-        base ^>=4.14.3.0,
+        base ^>=4.16,
         wai  ^>=3.2,
         warp ^>=3.3,
 
@@ -107,4 +109,4 @@ test-suite holiplan-test
     type:             exitcode-stdio-1.0
     hs-source-dirs:   test
     main-is:          MyLibTest.hs
-    build-depends:    base ^>=4.14.3.0
+    build-depends:    base ^>=4.16
