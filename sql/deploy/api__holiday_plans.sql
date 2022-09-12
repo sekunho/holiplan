@@ -201,8 +201,8 @@ BEGIN;
   CREATE OR REPLACE FUNCTION api.create_event
     ( in_plan_id UUID
     , in_name TEXT
-    , in_start_date TIMESTAMP
-    , in_end_date TIMESTAMP
+    , in_start_time TIMESTAMPTZ
+    , in_end_time TIMESTAMPTZ
     )
     RETURNS JSONB
     LANGUAGE PLPGSQL
@@ -226,8 +226,8 @@ BEGIN;
         END IF;
 
         INSERT
-          INTO app.events (plan_id, name, start_date, end_date, user_id)
-          VALUES ($1, $2, $3, $4, app.current_user_id())
+          INTO app.events (plan_id, name, start_time, end_time, user_id)
+          VALUES ($1, $2, $3 :: TIMESTAMP, $4 :: TIMESTAMP, app.current_user_id())
           RETURNING
             json_build_object
               ( 'id'
@@ -235,11 +235,13 @@ BEGIN;
               , 'plan_id'
               , plan_id
               , 'start_time'
-              , start_date
+              , start_time
               , 'end_time'
-              , end_date
+              , end_time
               , 'user_id'
               , user_id
+              , 'name'
+              , name
               )
           INTO result;
 
@@ -252,8 +254,8 @@ BEGIN;
   CREATE OR REPLACE FUNCTION api.edit_event
     ( event_id UUID
     , name TEXT
-    , start_date TIMESTAMP
-    , end_date TIMESTAMP
+    , start_time TIMESTAMPTZ
+    , end_time TIMESTAMPTZ
     )
     RETURNS JSONB
     LANGUAGE PLPGSQL
@@ -263,8 +265,8 @@ BEGIN;
       BEGIN
         UPDATE app.events
           SET name = $2
-            , start_date = $3
-            , end_date = $4
+            , start_time = $3
+            , end_time = $4
           WHERE events.id = $1
           RETURNING
             json_build_object
@@ -273,9 +275,13 @@ BEGIN;
               , 'plan_id'
               , events.plan_id
               , 'start_time'
-              , events.start_date
+              , events.start_time
               , 'end_time'
-              , events.end_date
+              , events.end_time
+              , 'name'
+              , events.name
+              , 'user_id'
+              , user_id
               )
           INTO result;
 
@@ -310,9 +316,9 @@ BEGIN;
               , 'name'
               , events.name
               , 'start_time'
-              , events.start_date
+              , events.start_time
               , 'end_time'
-              , events.end_date
+              , events.end_time
               )
           INTO result;
 

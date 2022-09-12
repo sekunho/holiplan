@@ -12,16 +12,20 @@ module HoliplanWeb.Handler.Plan (
   addComment,
   editComment,
   deleteComment,
+  createEvent,
+  editEvent,
+  deleteEvent,
 ) where
 
 import Hasql.Pool (Pool)
+import Holiplan.Error (Error (ParseError, UsageError))
+import Holiplan.Event (Event, ReqEvent)
+import qualified Holiplan.Event as Event
+import Holiplan.Id (CommentId, EventId, PlanId)
 import Holiplan.Plan (
   Comment,
-  CommentId,
-  Error (ParseError, UsageError),
   Plan,
   PlanDetail,
-  PlanId,
   PlanIndex,
   ReqComment,
   ReqPlan,
@@ -71,6 +75,22 @@ type PlanAPI =
       :> Capture "plan_id" PlanId
       :> "comments"
       :> Capture "comment_id" CommentId
+      :> DeleteNoContent
+    :<|> AuthProtect "cookie-auth"
+      :> Capture "plan_id" PlanId
+      :> "events"
+      :> ReqBody '[JSON] ReqEvent
+      :> PostCreated '[JSON] Event
+    :<|> AuthProtect "cookie-auth"
+      :> Capture "plan_id" PlanId
+      :> "events"
+      :> Capture "event_id" EventId
+      :> ReqBody '[JSON] ReqEvent
+      :> PostCreated '[JSON] Event
+    :<|> AuthProtect "cookie-auth"
+      :> Capture "plan_id" PlanId
+      :> "events"
+      :> Capture "event_id" EventId
       :> DeleteNoContent
 
 listPlans :: Pool -> UserSession -> Handler PlanIndex
@@ -157,3 +177,33 @@ deleteComment dbPool (UserSession currentUserId _ _) _planId commentId = do
   case result of
     Right _ -> pure NoContent
     Left _ -> throw500 "Failed to delete comment"
+
+createEvent :: Pool -> UserSession -> PlanId -> ReqEvent -> Handler Event
+createEvent dbPool (UserSession currentUserId _ _) planId body = do
+  result <- liftIO $ Event.createEvent dbPool currentUserId planId body
+
+  case result of
+    Right event -> pure event
+    Left e ->
+      case e of
+        UsageError _ -> throw500 "Failed to create event"
+        ParseError _ -> throw500 "Failed to parse event"
+
+editEvent :: Pool -> UserSession -> PlanId -> EventId -> ReqEvent -> Handler Event
+editEvent dbPool (UserSession currentUserId _ _) planId eventId body = do
+  result <- liftIO $ Event.editEvent dbPool currentUserId planId eventId body
+
+  case result of
+    Right event -> pure event
+    Left e ->
+      case e of
+        UsageError _ -> throw500 "Failed to edit event"
+        ParseError _ -> throw500 "Failed to parse event"
+
+deleteEvent :: Pool -> UserSession -> PlanId -> EventId -> Handler NoContent
+deleteEvent dbPool (UserSession currentUserId _ _) planId eventId = do
+  result <- liftIO $ Event.deleteEvent dbPool currentUserId planId eventId
+
+  case result of
+    Right _ -> pure NoContent
+    Left _ -> throw500 "Failed to delete event"

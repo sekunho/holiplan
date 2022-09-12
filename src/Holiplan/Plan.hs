@@ -11,9 +11,6 @@ module Holiplan.Plan (
   Plan (..),
   ReqComment (..),
   Comment (..),
-  CommentId (..),
-  Error (..),
-  PlanId (..),
   listPlans,
   createPlan,
   getPlanDetail,
@@ -33,19 +30,20 @@ import Data.UUID (UUID)
 import Hasql.Pool (Pool, UsageError)
 import qualified Hasql.Pool as Pool
 import Hasql.TH (resultlessStatement, singletonStatement)
-import Holiplan.Session (CurrentUserId (CurrentUserId))
-import Servant.API (FromHttpApiData)
-
-newtype PlanId = PlanId UUID
-  deriving stock (Eq, Show)
-  deriving (FromJSON, ToJSON, FromHttpApiData) via UUID
+import Holiplan.Error (Error (ParseError, UsageError))
+import Holiplan.Id (
+  CommentId (CommentId),
+  PlanId (PlanId),
+  UserId (UserId),
+ )
+import Holiplan.Event (Event)
 
 data PlanDetail = PlanDetail
   { id :: PlanId,
     date :: Day,
     name :: Text,
     description :: Text,
-    events :: [Text],
+    events :: [Event],
     comments :: [Comment]
   }
   deriving stock (Eq, Show, Generic)
@@ -71,10 +69,6 @@ data PlanIndex = PlanIndex
   }
   deriving stock (Show, Generic)
 
-newtype CommentId = CommentId UUID
-  deriving stock (Eq, Show)
-  deriving (FromJSON, ToJSON, FromHttpApiData) via UUID
-
 data Comment = Comment
   { id :: CommentId,
     user_id :: Int64,
@@ -99,12 +93,7 @@ instance ToJSON ReqPlan
 instance FromJSON PlanIndex
 instance ToJSON PlanIndex
 
-data Error
-  = UsageError UsageError
-  | ParseError String
-  deriving stock (Show)
-
-listPlans :: Pool -> CurrentUserId -> IO (Either Error PlanIndex)
+listPlans :: Pool -> UserId -> IO (Either Error PlanIndex)
 listPlans dbPool currentUserId =
   let statement =
         [singletonStatement|
@@ -115,7 +104,7 @@ listPlans dbPool currentUserId =
       result =
         Pool.use dbPool $
           DB.authQuery
-            (coerce @CurrentUserId @Int64 currentUserId)
+            (coerce @UserId @Int64 currentUserId)
             ()
             statement
 
@@ -128,7 +117,7 @@ listPlans dbPool currentUserId =
           Left e -> pure (Left $ UsageError e)
    in planIndex
 
-createPlan :: Pool -> CurrentUserId -> ReqPlan -> IO (Either Error Plan)
+createPlan :: Pool -> UserId -> ReqPlan -> IO (Either Error Plan)
 createPlan dbPool currentUserId (ReqPlan name desc date) =
   let statement =
         [singletonStatement|
@@ -145,7 +134,7 @@ createPlan dbPool currentUserId (ReqPlan name desc date) =
       result =
         Pool.use dbPool $
           DB.authQuery
-            (coerce @CurrentUserId @Int64 currentUserId)
+            (coerce @UserId @Int64 currentUserId)
             (name, desc, date, "REPLACE_ME", "PH")
             statement
 
@@ -158,7 +147,7 @@ createPlan dbPool currentUserId (ReqPlan name desc date) =
           Left e -> pure (Left $ UsageError e)
    in plan
 
-getPlanDetail :: Pool -> CurrentUserId -> PlanId -> IO (Either Error PlanDetail)
+getPlanDetail :: Pool -> UserId -> PlanId -> IO (Either Error PlanDetail)
 getPlanDetail dbPool currentUserId planId =
   let statement =
         [singletonStatement|
@@ -169,7 +158,7 @@ getPlanDetail dbPool currentUserId planId =
       result =
         Pool.use dbPool $
           DB.authQuery
-            (coerce @CurrentUserId @Int64 currentUserId)
+            (coerce @UserId @Int64 currentUserId)
             (coerce @PlanId @UUID planId)
             statement
 
@@ -180,9 +169,9 @@ getPlanDetail dbPool currentUserId planId =
               Success planDetail' -> pure (Right planDetail')
               Error e -> liftIO (print e) >> pure (Left $ ParseError e)
           Left e -> liftIO (print e) >> pure (Left $ UsageError e)
-   in planDetail
+   in result >>= print >> planDetail
 
-editPlan :: Pool -> CurrentUserId -> PlanId -> ReqPlan -> IO (Either Error Plan)
+editPlan :: Pool -> UserId -> PlanId -> ReqPlan -> IO (Either Error Plan)
 editPlan dbPool currentUserId planId (ReqPlan name desc _date) =
   let statement =
         [singletonStatement|
@@ -191,7 +180,7 @@ editPlan dbPool currentUserId planId (ReqPlan name desc _date) =
         |]
 
       planId' = coerce @PlanId @UUID planId
-      currentUserId' = coerce @CurrentUserId @Int64 currentUserId
+      currentUserId' = coerce @UserId @Int64 currentUserId
 
       result =
         Pool.use dbPool $
@@ -209,7 +198,7 @@ editPlan dbPool currentUserId planId (ReqPlan name desc _date) =
           Left e -> pure (Left $ UsageError e)
    in plan
 
-deletePlan :: Pool -> CurrentUserId -> PlanId -> IO (Either UsageError ())
+deletePlan :: Pool -> UserId -> PlanId -> IO (Either UsageError ())
 deletePlan dbPool currentUserId planId =
   let statement =
         [resultlessStatement|
@@ -218,11 +207,11 @@ deletePlan dbPool currentUserId planId =
 
       planId' = coerce @PlanId @UUID planId
 
-      currentUserId' = coerce @CurrentUserId @Int64 currentUserId
+      currentUserId' = coerce @UserId @Int64 currentUserId
    in Pool.use dbPool $
         DB.authQuery currentUserId' planId' statement
 
-addComment :: Pool -> CurrentUserId -> ReqComment -> PlanId -> IO (Either Error Comment)
+addComment :: Pool -> UserId -> ReqComment -> PlanId -> IO (Either Error Comment)
 addComment dbPool currentUserId (ReqComment comment) planId =
   let statement =
         [singletonStatement|
@@ -232,7 +221,7 @@ addComment dbPool currentUserId (ReqComment comment) planId =
 
       planId' = coerce @PlanId @UUID planId
 
-      currentUserId' = coerce @CurrentUserId @Int64 currentUserId
+      currentUserId' = coerce @UserId @Int64 currentUserId
 
       result =
         Pool.use dbPool $
@@ -250,7 +239,7 @@ addComment dbPool currentUserId (ReqComment comment) planId =
           Left e -> pure (Left $ UsageError e)
    in comment'
 
-editComment :: Pool -> CurrentUserId -> CommentId -> ReqComment -> IO (Either Error Comment)
+editComment :: Pool -> UserId -> CommentId -> ReqComment -> IO (Either Error Comment)
 editComment dbPool currentUserId commentId (ReqComment comment) =
   let statement =
         [singletonStatement|
@@ -258,7 +247,7 @@ editComment dbPool currentUserId commentId (ReqComment comment) =
             FROM api.edit_comment($1 :: UUID, $2 :: TEXT)
         |]
 
-      currentUserId' = coerce @CurrentUserId @Int64 currentUserId
+      currentUserId' = coerce @UserId @Int64 currentUserId
 
       commentId' = coerce @CommentId @UUID commentId
 
@@ -278,7 +267,7 @@ editComment dbPool currentUserId commentId (ReqComment comment) =
           Left e -> pure (Left $ UsageError e)
    in comment'
 
-deleteComment :: Pool -> CurrentUserId -> CommentId -> IO (Either UsageError ())
+deleteComment :: Pool -> UserId -> CommentId -> IO (Either UsageError ())
 deleteComment dbPool currentUserId commentId =
   let statement =
         [resultlessStatement|
@@ -287,6 +276,6 @@ deleteComment dbPool currentUserId commentId =
 
       commentId' = coerce @CommentId @UUID commentId
 
-      currentUserId' = coerce @CurrentUserId @Int64 currentUserId
+      currentUserId' = coerce @UserId @Int64 currentUserId
    in Pool.use dbPool $
         DB.authQuery currentUserId' commentId' statement

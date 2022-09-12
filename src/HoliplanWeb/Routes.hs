@@ -1,22 +1,23 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
 
 module HoliplanWeb.Routes (holiplanAPI, planServer, sessionServer) where
 
 import Servant (
+  AuthProtect,
   Server,
   type (:<|>) ((:<|>)),
-  type (:>), AuthProtect
+  type (:>),
  )
 
 import Hasql.Pool (Pool)
+import Holiplan.Session (UserSession)
 import HoliplanWeb.Handler.Plan (PlanAPI)
 import qualified HoliplanWeb.Handler.Plan as PlanHandler
 import HoliplanWeb.Handler.Session (SessionAPI)
 import qualified HoliplanWeb.Handler.Session as SessionHandler
 import Servant.Server.Experimental.Auth (AuthServerData)
-import Holiplan.Session (UserSession)
 
 type HoliplanAPI =
   "plans" :> PlanAPI
@@ -34,6 +35,9 @@ planServer dbPool =
     :<|> PlanHandler.addComment dbPool
     :<|> PlanHandler.editComment dbPool
     :<|> PlanHandler.deleteComment dbPool
+    :<|> PlanHandler.createEvent dbPool
+    :<|> PlanHandler.editEvent dbPool
+    :<|> PlanHandler.deleteEvent dbPool
 
 sessionServer :: Pool -> Server SessionAPI
 sessionServer dbPool =

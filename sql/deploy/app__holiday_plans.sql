@@ -23,18 +23,18 @@ BEGIN;
     user_id    BIGINT REFERENCES app.users ON DELETE CASCADE,
 
     name       TEXT NOT NULL,
-    start_date TIMESTAMP NOT NULL,
-    end_date   TIMESTAMP NOT NULL,
+    start_time TIMESTAMPTZ NOT NULL,
+    end_time   TIMESTAMPTZ NOT NULL,
 
-    -- Checks if the end_date happens after the start_date.
-    CONSTRAINT valid_timestamp CHECK (start_date < end_date),
-    CONSTRAINT same_day CHECK (start_date::DATE = end_date::DATE),
+    -- Checks if the end_time happens after the start_time.
+    CONSTRAINT valid_timestamp CHECK (start_time < end_time),
+    CONSTRAINT same_day CHECK (start_time::DATE = end_time::DATE),
 
     -- Checks if those events with the same `plan_id`s should not have any
     -- overlapping date/time ranges.
     EXCLUDE USING gist (
       plan_id gist_uuid_ops WITH =,
-      tsrange(start_date, end_date) WITH &&
+      tstzrange(start_time, end_time) WITH &&
     )
   );
 
