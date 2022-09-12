@@ -3,7 +3,7 @@
 BEGIN;
 
   CREATE TABLE app.plans(
-    plan_id     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     user_id     BIGINT REFERENCES app.users ON DELETE CASCADE,
     name        TEXT NOT NULL,
@@ -18,8 +18,8 @@ BEGIN;
   ALTER TABLE app.plans ENABLE ROW LEVEL SECURITY;
 
   CREATE TABLE app.events(
-    event_id   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    plan_id    UUID REFERENCES app.plans(plan_id) ON DELETE CASCADE,
+    id   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    plan_id    UUID REFERENCES app.plans(id) ON DELETE CASCADE,
     user_id    BIGINT REFERENCES app.users ON DELETE CASCADE,
 
     name       TEXT NOT NULL,
@@ -44,8 +44,8 @@ BEGIN;
   ALTER TABLE app.events ENABLE ROW LEVEL SECURITY;
 
   CREATE TABLE app.comments(
-    comment_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    plan_id    UUID REFERENCES app.plans,
+    id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    plan_id    UUID REFERENCES app.plans(id),
     user_id    BIGINT REFERENCES app.users,
     content    TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
