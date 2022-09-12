@@ -29,8 +29,8 @@ BEGIN;
           )
         RETURNING
           json_build_object
-            ( 'plan_id'
-            , plan_id
+            ( 'id'
+            , id
             , 'name'
             , name
             , 'description'
@@ -71,7 +71,7 @@ BEGIN;
             , 'description'
             , plans.description
             , 'id'
-            , plans.plan_id
+            , plans.id
             , 'events'
             , coalesce(events_cte.events, '[]'::JSONB)
             , 'comments'
@@ -85,9 +85,9 @@ BEGIN;
             )
           INTO result
           FROM app.plans, events_cte, comments_cte
-          WHERE plans.plan_id = in_plan_id
+          WHERE plans.id = in_plan_id
           GROUP BY
-            plans.plan_id
+            plans.id
           , plans.name
           , plans.description
           , events_cte.events
@@ -112,7 +112,7 @@ BEGIN;
     AS $$
       SELECT
         json_build_object
-          ( 'data'
+          ( 'plans'
           , coalesce(jsonb_agg(row_to_json(plans)), '[]'::JSONB)
           , 'length'
           , count(plans)
@@ -136,11 +136,11 @@ BEGIN;
         UPDATE app.plans
           SET name = in_name
             , description = in_description
-          WHERE plans.plan_id = in_plan_id
+          WHERE plans.id = in_plan_id
           RETURNING
             json_build_object
-              ( 'plan_id'
-              , plan_id
+              ( 'id'
+              , id
               , 'name'
               , name
               , 'description'
@@ -171,10 +171,10 @@ BEGIN;
       BEGIN
         DELETE
           FROM app.plans
-          WHERE plans.plan_id = $1
+          WHERE plans.id = $1
           RETURNING json_build_object
             ( 'id'
-            , plan_id
+            , id
             , 'name'
             , name
             , 'description'
@@ -214,7 +214,7 @@ BEGIN;
         SELECT exists(
           SELECT *
             FROM app.plans
-            WHERE plans.plan_id = $1
+            WHERE plans.id = $1
               AND plans.date = $3 :: DATE
               AND plans.date = $4 :: DATE
         )
@@ -231,7 +231,7 @@ BEGIN;
           RETURNING
             json_build_object
               ( 'id'
-              , event_id
+              , id
               , 'plan_id'
               , plan_id
               , 'start_time'
@@ -265,11 +265,11 @@ BEGIN;
           SET name = $2
             , start_date = $3
             , end_date = $4
-          WHERE events.event_id = $1
+          WHERE events.id = $1
           RETURNING
             json_build_object
               ( 'id'
-              , events.event_id
+              , events.id
               , 'plan_id'
               , events.plan_id
               , 'start_time'
@@ -300,11 +300,11 @@ BEGIN;
       BEGIN
         DELETE
           FROM app.events
-          WHERE events.event_id = $1
+          WHERE events.id = $1
           RETURNING
             json_build_object
               ( 'id'
-              , events.event_id
+              , events.id
               , 'plan_id'
               , events.plan_id
               , 'name'
@@ -343,8 +343,8 @@ BEGIN;
           )
         RETURNING
           json_build_object
-            ( 'comment_id'
-            , comment_id
+            ( 'id'
+            , id
             , 'content'
             , content
             , 'user_id'
@@ -364,11 +364,11 @@ BEGIN;
     AS $$
       UPDATE app.comments
         SET content = edit_comment.content
-        WHERE comment_id = edit_comment.comment_id
+        WHERE id = edit_comment.comment_id
         RETURNING
           json_build_object
-            ( 'comment_id'
-            , comment_id
+            ( 'id'
+            , id
             , 'content'
             , content
             , 'user_id'
@@ -388,11 +388,11 @@ BEGIN;
     AS $$
       DELETE
         FROM app.comments
-        WHERE comment_id = delete_comment.comment_id
+        WHERE id = delete_comment.comment_id
         RETURNING
           json_build_object
-            ( 'comment_id'
-            , comment_id
+            ( 'id'
+            , id
             , 'content'
             , content
             , 'user_id'

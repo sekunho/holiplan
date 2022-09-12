@@ -27,7 +27,6 @@ module Holiplan.Plan (
 import qualified DB
 import Data.Aeson (Result (Error, Success), ToJSON)
 import qualified Data.Aeson as Aeson
-import Data.Aeson.TH (Options (fieldLabelModifier), defaultOptions, deriveJSON)
 import Data.Aeson.Types (FromJSON)
 import Data.Time (Day, UTCTime)
 import Data.UUID (UUID)
@@ -38,63 +37,67 @@ import Holiplan.Session (CurrentUserId (CurrentUserId))
 import Servant.API (FromHttpApiData)
 
 newtype PlanId = PlanId UUID
-  deriving stock (Eq, Show, Generic)
+  deriving stock (Eq, Show)
   deriving (FromJSON, ToJSON, FromHttpApiData) via UUID
 
 data PlanDetail = PlanDetail
-  { plan_detail_id :: PlanId,
-    plan_detail_date :: Day,
-    plan_detail_name :: Text,
-    plan_detail_description :: Text,
-    plan_detail_events :: [Text],
-    plan_detail_comments :: [Comment]
+  { id :: PlanId,
+    date :: Day,
+    name :: Text,
+    description :: Text,
+    events :: [Text],
+    comments :: [Comment]
   }
   deriving stock (Eq, Show, Generic)
 
 data Plan = Plan
-  { plan_plan_id :: PlanId,
-    plan_date :: Day,
-    plan_name :: Text,
-    plan_description :: Text
+  { id :: PlanId,
+    date :: Day,
+    name :: Text,
+    description :: Text
   }
   deriving stock (Eq, Show, Generic)
 
 data ReqPlan = ReqPlan
-  { req_plan_name :: Text,
-    req_plan_description :: Text,
-    req_plan_date :: Day
+  { name :: Text,
+    description :: Text,
+    date :: Day
   }
   deriving stock (Eq, Show, Generic)
 
 data PlanIndex = PlanIndex
-  { plan_index_data :: [Plan],
-    plan_index_length :: Int
+  { plans :: [Plan],
+    length :: Int
   }
-  deriving stock (Show)
+  deriving stock (Show, Generic)
 
 newtype CommentId = CommentId UUID
   deriving stock (Eq, Show)
   deriving (FromJSON, ToJSON, FromHttpApiData) via UUID
 
 data Comment = Comment
-  { comment_id :: CommentId,
+  { id :: CommentId,
     user_id :: Int64,
     content :: Text,
     created_at :: UTCTime
   }
   deriving stock (Eq, Show, Generic)
 
-newtype ReqComment = ReqComment
-  {req_comment_content :: Text}
+newtype ReqComment = ReqComment {content :: Text}
+  deriving stock (Eq, Show, Generic)
 
+instance FromJSON ReqComment
+instance ToJSON ReqComment
 instance FromJSON Comment
 instance ToJSON Comment
-
-$(deriveJSON defaultOptions {fieldLabelModifier = drop 12} ''PlanDetail)
-$(deriveJSON defaultOptions {fieldLabelModifier = drop 5} ''Plan)
-$(deriveJSON defaultOptions {fieldLabelModifier = drop 9} ''ReqPlan)
-$(deriveJSON defaultOptions {fieldLabelModifier = drop 11} ''PlanIndex)
-$(deriveJSON defaultOptions {fieldLabelModifier = drop 12} ''ReqComment)
+instance FromJSON Plan
+instance ToJSON Plan
+instance FromJSON PlanDetail
+instance ToJSON PlanDetail
+instance FromJSON ReqPlan
+instance ToJSON ReqPlan
+instance FromJSON PlanIndex
+instance ToJSON PlanIndex
 
 data Error
   = UsageError UsageError
@@ -121,7 +124,7 @@ listPlans dbPool currentUserId =
           Right resultValue ->
             case Aeson.fromJSON @PlanIndex resultValue of
               Success planIndex' -> pure (Right planIndex')
-              Error e -> pure (Left $ ParseError e)
+              Error e -> liftIO (print e) >> pure (Left $ ParseError e)
           Left e -> pure (Left $ UsageError e)
    in planIndex
 
@@ -176,7 +179,7 @@ getPlanDetail dbPool currentUserId planId =
             case Aeson.fromJSON @PlanDetail resultValue of
               Success planDetail' -> pure (Right planDetail')
               Error e -> liftIO (print e) >> pure (Left $ ParseError e)
-          Left e -> pure (Left $ UsageError e)
+          Left e -> liftIO (print e) >> pure (Left $ UsageError e)
    in planDetail
 
 editPlan :: Pool -> CurrentUserId -> PlanId -> ReqPlan -> IO (Either Error Plan)
