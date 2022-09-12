@@ -35,7 +35,16 @@ common shared
 
 library
     import: shared
+
     exposed-modules:
+        HoliplanWeb.Server,
+        DB,
+
+    -- Modules included in this library but not exported.
+    other-modules:
+        Holiplan.Error,
+        Holiplan.Event,
+        Holiplan.Id,
         Holiplan.Plan,
         Holiplan.Session,
         HoliplanWeb.Auth,
@@ -43,10 +52,6 @@ library
         HoliplanWeb.Handler.Plan,
         HoliplanWeb.Handler.Session,
         HoliplanWeb.Routes,
-        HoliplanWeb.Server,
-        DB
-    -- Modules included in this library but not exported.
-    -- other-modules:
 
     ghc-options:
       -Wall

@@ -2,7 +2,6 @@
 {-# LANGUAGE QuasiQuotes #-}
 
 module Holiplan.Session (
-  CurrentUserId (CurrentUserId),
   Creds (..),
   Username (..),
   Password (..),
@@ -23,9 +22,7 @@ import Hasql.Statement (Statement)
 import Hasql.TH (resultlessStatement, singletonStatement)
 import Hasql.Transaction (Transaction)
 import qualified Hasql.Transaction as Transaction
-
-newtype CurrentUserId = CurrentUserId Int64
-  deriving (FromJSON, ToJSON) via Int64
+import Holiplan.Id (UserId (UserId))
 
 newtype Username = Username Text
   deriving (FromJSON, ToJSON) via Text
@@ -43,7 +40,7 @@ instance ToJSON Creds
 instance FromJSON Creds
 
 data UserSession = UserSession
-  { user_id :: CurrentUserId,
+  { user_id :: UserId,
     expires_on :: UTCTime,
     token :: Text
   }
@@ -135,7 +132,7 @@ logout dbPool (UserSession currentUserId _ sessionToken) =
             SELECT FROM auth.logout($1 :: TEXT)
           |]
 
-      currentUserId' = coerce @CurrentUserId @Int64 currentUserId
+      currentUserId' = coerce @UserId @Int64 currentUserId
 
       result =
         Pool.use dbPool $
