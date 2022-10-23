@@ -1,4 +1,6 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 
 module HoliplanWeb.Handler.Session (
@@ -14,12 +16,23 @@ import Hasql.Pool (Pool)
 import Holiplan.Session (Creds, UserSession (UserSession))
 import qualified Holiplan.Session as Session
 import HoliplanWeb.Handler.Error (throw500)
-import Servant.API (Header, Headers, ReqBody, type (:<|>), type (:>))
+import Servant.API (
+  HasStatus,
+  Header,
+  Headers,
+  ReqBody,
+  UVerb,
+  Union,
+  WithStatus (WithStatus),
+  type (:<|>),
+  type (:>),
+ )
 import qualified Servant.API as API
 import Servant.API.ContentTypes (JSON, NoContent (NoContent))
 import Servant.API.Experimental.Auth (AuthProtect)
-import Servant.API.Verbs (Delete, Post, PostNoContent)
+import Servant.API.Verbs (Delete, PostNoContent, StdMethod (POST))
 import Servant.Server (Handler)
+import Servant.Server.UVerb (respond)
 import Web.Cookie (
   SetCookie (
     setCookieExpires,
@@ -38,10 +51,18 @@ type SessionAPI =
   "register" :> ReqBody '[JSON] Creds :> PostNoContent
     :<|> "login"
       :> ReqBody '[JSON] Creds
-      :> Post '[JSON] (Headers '[Header "Set-Cookie" SetCookie] NoContent)
+      :> UVerb
+          'POST
+          '[JSON]
+          '[ WithStatus 401 Text,
+             Headers '[Header "Set-Cookie" SetCookie] NoContent
+           ]
     :<|> "logout"
       :> AuthProtect "cookie-auth"
       :> Delete '[JSON] (Headers '[Header "Set-Cookie" SetCookie] NoContent)
+
+instance HasStatus (Headers '[Header "Set-Cookie" SetCookie] NoContent) where
+  type StatusOf (Headers '[Header "Set-Cookie" SetCookie] NoContent) = 201
 
 register :: Pool -> Creds -> Handler NoContent
 register dbPool creds = do
@@ -51,7 +72,15 @@ register dbPool creds = do
     Right _ -> pure NoContent
     Left _ -> throw500 "Unable to register"
 
-login :: Pool -> Creds -> Handler (Headers '[Header "Set-Cookie" SetCookie] NoContent)
+login ::
+  Pool ->
+  Creds ->
+  Handler
+    ( Union
+        '[ WithStatus 401 Text,
+           Headers '[Header "Set-Cookie" SetCookie] NoContent
+         ]
+    )
 login dbPool creds = do
   result <- liftIO $ Session.login dbPool creds
 
@@ -67,10 +96,10 @@ login dbPool creds = do
                 setCookieHttpOnly = True,
                 setCookieSameSite = Just sameSiteStrict
               }
-       in pure (API.addHeader sessionCookie NoContent)
+       in respond (API.addHeader @"Set-Cookie" sessionCookie NoContent)
     Left e ->
       liftIO (print e)
-        >> throw500 "Unable to login"
+        >> respond (WithStatus @401 ("User does not exist" :: Text))
 
 logout :: Pool -> UserSession -> Handler (Headers '[Header "Set-Cookie" SetCookie] NoContent)
 logout dbPool userSession = do
@@ -90,5 +119,5 @@ logout dbPool userSession = do
   case result of
     Right _ -> pure (API.addHeader sessionCookie NoContent)
     Left e ->
-      liftIO (print e) >>
-      throw500 "Unable to logout"
+      liftIO (print e)
+        >> throw500 "Unable to logout"

@@ -32,6 +32,7 @@ common shared
         InstanceSigs
         NoFieldSelectors
         DuplicateRecordFields
+        GeneralizedNewtypeDeriving
 
 library
     import: shared
