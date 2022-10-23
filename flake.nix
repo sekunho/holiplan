@@ -2,37 +2,62 @@
   description = "A very basic flake";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs";
+    haskellNix.url = "github:input-output-hk/haskell.nix";
+    nixpkgs.follows = "haskellNix/nixpkgs-unstable";
+    flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { self, nixpkgs }:
-    let
-      system = "x86_64-linux";
-      pkgs = nixpkgs.legacyPackages.${system};
-      lib = nixpkgs.lib;
-    in {
-      devShells.${system}.default = pkgs.mkShell rec {
-        buildInputs = with pkgs; [
-          # Haskal
-          haskell.compiler.ghc924
-          haskell.packages.ghc924.cabal-install
+  outputs = { self, nixpkgs, haskellNix, flake-utils }:
+    flake-utils.lib.eachSystem [ "x86_64-linux" ] (system:
+      let
+        overlays = [ haskellNix.overlay (final: prev: {
+          holiplan = final.haskell-nix.project' {
+            src = ./.;
+            compiler-nix-name = "ghc924";
 
-          # Schema migration
-          sqitchPg
+            shell.tools = {
+              cabal = {};
+              hlint = {};
+              haskell-language-server = {};
+            };
 
-          # Dev tools
-          haskell.packages.ghc924.haskell-language-server
-          haskell.packages.ghc924.fourmolu
-          haskell.packages.ghc924.implicit-hie
-          hlint
-          watchexec
-
-          pkg-config
-          zlib
-          postgresql
+            shell.buildInputs = with pkgs; [
+              watchexec
+              sqitchPg
+              pkg-config
+              zlib
+              postgresql
+            ];
+          };
+          })
         ];
+        pkgs = import nixpkgs { inherit system overlays; inherit (haskellNix) config; };
+        flake = pkgs.holiplan.flake {};
 
-        LD_LIBRARY_PATH = lib.makeLibraryPath buildInputs;
-      };
-    };
+        buildDockerImage = tag: pkgs.dockerTools.buildImage {
+          name = "holiplan-docker";
+          tag = tag;
+          copyToRoot = pkgs.buildEnv {
+            name = "image-root";
+            paths = [ pkgs.bash ];
+            pathsToLink = [ "/bin" ];
+          };
+
+          config = {
+            Cmd = [ "${self.packages.x86_64-linux.holiplan}/bin/holiplan" ];
+            WorkingDir = "/app";
+            Env = [ "PATH=${pkgs.coreutils}/bin/:${self.packages.${system}.holiplan}/bin" ];
+
+            ExposedPorts = {
+              "8082/tcp" = {};
+            };
+          };
+        };
+      in flake // {
+        packages = rec {
+          default = flake.packages."holiplan:exe:holiplan";
+          holiplan = default;
+          holiplan-docker = buildDockerImage "latest";
+        };
+      });
 }
