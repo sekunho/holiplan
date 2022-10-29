@@ -8,56 +8,60 @@
   };
 
   outputs = { self, nixpkgs, haskellNix, flake-utils }:
-    flake-utils.lib.eachSystem [ "x86_64-linux" ] (system:
-      let
-        overlays = [ haskellNix.overlay (final: prev: {
-          holiplan = final.haskell-nix.project' {
+    let
+      system = "x86_64-linux";
+
+      overlays = [
+        haskellNix.overlay (final: prev: {
+          holiplan = final.haskell-nix.cabalProject' {
             src = ./.;
             compiler-nix-name = "ghc924";
 
-            shell.tools = {
-              cabal = {};
-              hlint = {};
-              haskell-language-server = {};
-            };
+            shell = {
+              # exactDeps = true;
+              withHoogle = true;
+              withHaddock = true;
 
-            shell.buildInputs = with pkgs; [
-              watchexec
-              sqitchPg
-              pkg-config
-              zlib
-              postgresql
-            ];
-          };
-          })
-        ];
-        pkgs = import nixpkgs { inherit system overlays; inherit (haskellNix) config; };
-        flake = pkgs.holiplan.flake {};
+              tools = {
+                cabal = {};
+                hlint = {};
+                haskell-language-server = {};
+                fourmolu = {};
+              };
 
-        buildDockerImage = tag: pkgs.dockerTools.buildImage {
-          name = "holiplan-docker";
-          tag = tag;
-          copyToRoot = pkgs.buildEnv {
-            name = "image-root";
-            paths = [ pkgs.bash ];
-            pathsToLink = [ "/bin" ];
-          };
+              buildInputs = with pkgs; [
+                watchexec
+                sqitchPg
+                pkg-config
+                zlib
+              ];
 
-          config = {
-            Cmd = [ "${self.packages.x86_64-linux.holiplan}/bin/holiplan" ];
-            WorkingDir = "/app";
-            Env = [ "PATH=${pkgs.coreutils}/bin/:${self.packages.${system}.holiplan}/bin" ];
-
-            ExposedPorts = {
-              "8082/tcp" = {};
+              shellHook = ''
+                alias haskell-language-server-wrapper="haskell-language-server"
+              '';
             };
           };
-        };
-      in flake // {
-        packages = rec {
-          default = flake.packages."holiplan:exe:holiplan";
-          holiplan = default;
-          holiplan-docker = buildDockerImage "latest";
-        };
-      });
+        })
+      ];
+
+      pkgs = import nixpkgs {
+        inherit system overlays;
+        inherit (haskellNix) config;
+      };
+
+      pkgs-unstable = nixpkgs.legacyPackages.${system};
+      flake = pkgs.holiplan.flake {};
+    in flake // {
+      packages.${system} = rec {
+        default = flake.packages."holiplan:exe:holiplan";
+        holiplan = default;
+      };
+
+      devShells.${system}.default = pkgs.holiplan.shell;
+
+      nixosModules.${system} = rec {
+        holiplan = import ./nix/services/holiplan.nix;
+        default = holiplan;
+      };
+    };
 }
