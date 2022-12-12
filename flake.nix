@@ -13,7 +13,7 @@
         overlays = [ haskellNix.overlay (final: prev: {
           holiplan = final.haskell-nix.project' {
             src = ./.;
-            compiler-nix-name = "ghc924";
+            compiler-nix-name = "ghc925";
 
             shell.tools = {
               cabal = {};
@@ -26,7 +26,7 @@
               sqitchPg
               pkg-config
               zlib
-              postgresql
+              postgresql.lib
             ];
           };
           })
